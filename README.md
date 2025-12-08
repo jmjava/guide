@@ -18,15 +18,39 @@
 
 # Embabel Hub Backend: Chat and MCP Server
 
+Embabel Hub exposes resources relating to the Embabel Agent Framework, such
+as documentation, relevant blogs and other content, and up-to-the-minute API information.
+
+This is exposed in two ways:
+
+- Via a chatbot for the Embabel Hub front end
+- Via an MCP server for integration with Claude Desktop, Claude Code and
+  other MCP clients
+
 ## Loading data
 
 ```bash
 curl -X POST http://localhost:1337/api/v1/data/load-references
 ```
 
-## Setting up with Claude Desktop
+## Exposing MCP Tools
 
-Add this to `claude_desktop_config.json`:
+Starting the server will expose MCP tools on `http://localhost:1337/sse`.
+
+### Verifying With MCP Inspector (Optional)
+
+An easy way to verify the tools
+are exposed and experiment with calling them is by running the MCP inspector:
+
+```bash
+npx @modelcontextprotocol/inspector
+```
+
+Within the inspector UI, connect to `http://localhost:1337/sse`.
+
+### Consuming MCP Tools With Claude Desktop
+
+Add this stanza to `claude_desktop_config.json`:
 
 ```yml
 {
@@ -46,14 +70,30 @@ Add this to `claude_desktop_config.json`:
   }
 ```
 
-Running the MCP inspector:
+See [Connect Local Servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers) for detailed
+documentation.
+
+### Consuming MCP Tools With Claude Code
+
+If you're using Claude Code, adding the Embabel MCP server will
+powerfully augment its capabilities for working on Embabel applications
+and helping you learn Embabel.
 
 ```bash
-npx @modelcontextprotocol/inspector
+claude mcp add embabel --transport sse http://localhost:1337/sse
 ```
+
+Within the Claude Code shell, type `/mcp` to test the connection. Choose the number of the `embabel` server to check its
+status.
+
+Start via `claude --debug` to see more logging.
+
+See [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp) for further information.
 
 ## Miscellaneous
 
+Sometimes (for example if your IDE crashes) you will be left with an orphaned server process and won't be able to
+restart.
 To kill the server:
 
 ```aiignore

@@ -17,7 +17,9 @@ class SecurityConfig(
 
     val mcpPatterns = arrayOf(
         "/sse",
-        "/mcp/message",
+        "/sse/**",
+        "/mcp",
+        "/mcp/**",
     )
 
     val permittedPatterns = arrayOf(
