@@ -19,6 +19,11 @@
     Look to check code under embabel-agent-api
     This is for questions related to framework internals, not usage examples
 
+- fqn: com.embabel.coding.tools.git.GitHubRepository
+  url: https://github.com/embabel/shepherd.git
+  description: >
+    Utility AI example
+
 - fqn: com.embabel.coding.tools.api.ApiReferenceProvider
   name: embabel-agent
   description: Embabel Agent API - use to check type signatures

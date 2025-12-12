@@ -3,9 +3,8 @@ package com.embabel.guide;
 import com.embabel.agent.api.annotation.AchievesGoal;
 import com.embabel.agent.api.annotation.Action;
 import com.embabel.agent.api.annotation.Agent;
-import com.embabel.agent.api.annotation.Condition;
+import com.embabel.agent.api.annotation.Trigger;
 import com.embabel.agent.api.common.ActionContext;
-import com.embabel.agent.api.common.OperationContext;
 import com.embabel.agent.api.common.PlannerType;
 import com.embabel.agent.api.identity.User;
 import com.embabel.agent.core.AgentPlatform;
@@ -60,13 +59,6 @@ public class GuideResponderAgent {
         this.drivineStore = drivineStore;
     }
 
-    static final String LAST_EVENT_WAS_USER_MESSAGE = "user_last";
-
-    @Condition(name = LAST_EVENT_WAS_USER_MESSAGE)
-    public boolean lastEventWasUserMessage(OperationContext context) {
-        return context.lastResult() instanceof UserMessage;
-    }
-
     private HasGuideUserData getGuideUser(@Nullable User user) {
         switch (user) {
             case null -> {
@@ -98,10 +90,10 @@ public class GuideResponderAgent {
         }
     }
 
-    @Action(canRerun = true,
-            pre = {LAST_EVENT_WAS_USER_MESSAGE})
+    @Action(canRerun = true)
     ConversationStatus respond(
             Conversation conversation,
+            @Trigger UserMessage userMessage,
             ActionContext context) {
         logger.info("Incoming request from user {}", context.user());
         // TODO null safety is a problem here
