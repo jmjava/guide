@@ -3,7 +3,6 @@ package com.embabel.guide;
 import com.embabel.agent.api.annotation.AchievesGoal;
 import com.embabel.agent.api.annotation.Action;
 import com.embabel.agent.api.annotation.Agent;
-import com.embabel.agent.api.annotation.Trigger;
 import com.embabel.agent.api.common.ActionContext;
 import com.embabel.agent.api.common.PlannerType;
 import com.embabel.agent.api.identity.User;
@@ -90,10 +89,9 @@ public class GuideResponderAgent {
         }
     }
 
-    @Action(canRerun = true)
+    @Action(canRerun = true, trigger = UserMessage.class)
     ConversationStatus respond(
             Conversation conversation,
-            @Trigger UserMessage userMessage,
             ActionContext context) {
         logger.info("Incoming request from user {}", context.user());
         // TODO null safety is a problem here
