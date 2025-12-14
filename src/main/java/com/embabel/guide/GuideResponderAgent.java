@@ -1,24 +1,18 @@
 package com.embabel.guide;
 
-import com.embabel.agent.api.annotation.AchievesGoal;
 import com.embabel.agent.api.annotation.Action;
-import com.embabel.agent.api.annotation.Agent;
+import com.embabel.agent.api.annotation.EmbabelComponent;
 import com.embabel.agent.api.common.ActionContext;
-import com.embabel.agent.api.common.PlannerType;
 import com.embabel.agent.api.identity.User;
 import com.embabel.agent.core.AgentPlatform;
 import com.embabel.agent.core.CoreToolGroups;
 import com.embabel.agent.discord.DiscordUser;
 import com.embabel.agent.rag.neo.drivine.DrivineStore;
 import com.embabel.agent.rag.tools.ToolishRag;
-import com.embabel.chat.AssistantMessage;
 import com.embabel.chat.Chatbot;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
 import com.embabel.chat.agent.AgentProcessChatbot;
-import com.embabel.chat.agent.ConversationContinues;
-import com.embabel.chat.agent.ConversationOver;
-import com.embabel.chat.agent.ConversationStatus;
 import com.embabel.guide.domain.drivine.DrivineGuideUserRepository;
 import com.embabel.guide.domain.drivine.GuideUserWithDiscordUserInfo;
 import com.embabel.guide.domain.drivine.GuideUserWithWebUser;
@@ -35,9 +29,7 @@ import java.util.HashMap;
 /**
  * Core chatbot agent
  */
-@Agent(
-        description = "Embabel developer guide bot agent",
-        planner = PlannerType.UTILITY)
+@EmbabelComponent
 public class GuideResponderAgent {
 
     private final DataManager dataManager;
@@ -90,7 +82,7 @@ public class GuideResponderAgent {
     }
 
     @Action(canRerun = true, trigger = UserMessage.class)
-    ConversationStatus respond(
+    void respond(
             Conversation conversation,
             ActionContext context) {
         logger.info("Incoming request from user {}", context.user());
@@ -116,17 +108,6 @@ public class GuideResponderAgent {
                 .respondWithSystemPrompt(conversation, templateModel);
         conversation.addMessage(assistantMessage);
         context.sendMessage(assistantMessage);
-        return ConversationContinues.with(assistantMessage);
-    }
-
-    @Action
-    @AchievesGoal(description = "End the conversation politely")
-    ConversationOver respondAndTerminate(
-            ConversationOver conversationOver,
-            Conversation conversation,
-            ActionContext context) {
-        context.sendMessage(new AssistantMessage("Conversation over: " + conversationOver.getReason()));
-        return conversationOver;
     }
 
 }
