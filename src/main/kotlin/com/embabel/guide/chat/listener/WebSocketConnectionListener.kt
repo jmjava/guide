@@ -26,21 +26,6 @@ class WebSocketConnectionListener(
 
         if (userId != null) {
             logger.info("User connected: $userId")
-
-            // Try to find the user to get their display name
-            val webUser = guideUserRepository.findByWebUserId(userId).orElse(null)
-
-            if (webUser != null) {
-                // Use the User interface methods directly from the composite
-                val displayName = webUser.displayName
-                val username = webUser.username
-                logger.info("Sending greeting to authenticated user: $displayName (username: $username)")
-                val greetingMessage = "User $displayName has come online, and would like a greeting"
-                jesseService.receiveMessage(userId, greetingMessage)
-
-            } else {
-                logger.warn("Could not find user with ID: $userId")
-            }
         }
     }
 }
