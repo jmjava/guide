@@ -25,6 +25,19 @@ services:
     networks:
       - embabel-network
 
+  neo4j-init:
+    image: neo4j:5.26-community
+    container_name: embabel-neo4j-init
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    volumes:
+      - ./neo4j-init:/import
+    entrypoint: ["/bin/bash", "/import/init.sh"]
+    networks:
+      - embabel-network
+    restart: "no"  # Only run once
+
   guide:
     build:
       context: .
