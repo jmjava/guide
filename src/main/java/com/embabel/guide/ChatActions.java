@@ -4,16 +4,12 @@ import com.embabel.agent.api.annotation.Action;
 import com.embabel.agent.api.annotation.EmbabelComponent;
 import com.embabel.agent.api.common.ActionContext;
 import com.embabel.agent.api.identity.User;
-import com.embabel.agent.core.AgentPlatform;
-import com.embabel.agent.core.CoreToolGroups;
 import com.embabel.agent.discord.DiscordUser;
 import com.embabel.agent.rag.neo.drivine.DrivineStore;
 import com.embabel.agent.rag.tools.ToolishRag;
 import com.embabel.agent.rag.tools.TryHyDE;
-import com.embabel.chat.Chatbot;
 import com.embabel.chat.Conversation;
 import com.embabel.chat.UserMessage;
-import com.embabel.chat.agent.AgentProcessChatbot;
 import com.embabel.guide.domain.drivine.DrivineGuideUserRepository;
 import com.embabel.guide.domain.drivine.GuideUserWithDiscordUserInfo;
 import com.embabel.guide.domain.drivine.GuideUserWithWebUser;
@@ -21,26 +17,24 @@ import com.embabel.guide.domain.drivine.HasGuideUserData;
 import com.embabel.guide.rag.DataManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.Nullable;
 
 import java.util.HashMap;
 
 /**
- * Core chatbot agent
+ * Actions to respond to user messages in the Guide application
  */
 @EmbabelComponent
-public class GuideResponderAgent {
+public class ChatActions {
 
     private final DataManager dataManager;
     private final DrivineGuideUserRepository guideUserRepository;
 
-    private final Logger logger = LoggerFactory.getLogger(GuideResponderAgent.class);
+    private final Logger logger = LoggerFactory.getLogger(ChatActions.class);
     private final GuideProperties guideProperties;
     private final DrivineStore drivineStore;
 
-    public GuideResponderAgent(
+    public ChatActions(
             DataManager dataManager,
             DrivineGuideUserRepository guideUserRepository,
             DrivineStore drivineStore,
@@ -99,7 +93,7 @@ public class GuideResponderAgent {
                 .withLlm(guideProperties.chatLlm())
                 .withId("chat_response")
                 .withReferences(dataManager.referencesForUser(context.user()))
-                .withTools(CoreToolGroups.WEB)
+                .withToolGroups(guideProperties.toolGroups())
                 .withReference(new ToolishRag(
                                 "docs",
                                 "Embabel docs",
@@ -114,16 +108,3 @@ public class GuideResponderAgent {
 
 }
 
-/**
- * Exposes the GuideAgent as a Chatbot bean
- * so it can be picked up by Discord
- */
-@Configuration
-class GuideAgentBotConfig {
-
-    @Bean
-    Chatbot chatbot(AgentPlatform agentPlatform) {
-        return AgentProcessChatbot.utilityFromPlatform(
-                agentPlatform);
-    }
-}

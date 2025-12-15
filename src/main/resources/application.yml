@@ -1,19 +1,32 @@
-#embabel.models.default-embedding-service: nomic-embed-text:latest
-
 # Server Configuration
 server:
   port: 1337
+
+guide:
+  projects-path: ./embabel-projects
+  default-persona: adaptive
+
+
+  chat-llm:
+    model: gpt-4.1-mini
+
+  content-chunker:
+    include-section-title-in-chunk: false
+    max-chunk-size: 4000
+    overlap-size: 200
+
+  urls:
+    - https://docs.embabel.com/embabel-agent/guide/0.3.1-SNAPSHOT/
+    - https://medium.com/@springrod/build-better-agents-in-java-vs-python-embabel-vs-langgraph-f7951a0d855c
+    - https://medium.com/@springrod/context-engineering-needs-domain-understanding-b4387e8e4bf8
+    - https://github.com/embabel/embabel-agent/blob/main/README.md?plain=1
+
+  tool-groups:
 
 
 # Spring configuration
 # Force web application type (needed because Spring Shell is present)
 spring:
-
-  ai:
-    mcp:
-      server:
-        annotation-scanner:
-          enabled: true
 
   main:
     web-application-type: servlet
@@ -35,7 +48,6 @@ rag:
 embabel:
   models:
     llms:
-      cypher-query-generator: gpt-4.1
       summarizer: gpt-4.1-nano
 
     default-embedding-model: text-embedding-3-small
@@ -55,29 +67,6 @@ embabel:
 
   shell:
     line-length: 140
-
-guide:
-  projects-path: ./embabel-projects
-  default-persona: adaptive
-  top-k: 10
-  similarity-threshold: 0.3
-
-  coding-llm:
-    #      model: claude-3-7-sonnet-latest
-    model: gpt-4.1-mini
-  chat-llm:
-    model: gpt-4.1-mini
-
-  content-chunker:
-    include-section-title-in-chunk: false
-    max-chunk-size: 4000
-    overlap-size: 200
-
-  urls:
-    - https://docs.embabel.com/embabel-agent/guide/0.3.1-SNAPSHOT/
-    - https://medium.com/@springrod/build-better-agents-in-java-vs-python-embabel-vs-langgraph-f7951a0d855c
-    - https://medium.com/@springrod/context-engineering-needs-domain-understanding-b4387e8e4bf8
-    - https://github.com/embabel/embabel-agent/blob/main/README.md?plain=1
 
 
 logging:
