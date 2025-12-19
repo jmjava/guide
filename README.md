@@ -29,6 +29,8 @@ This is exposed in two ways:
 curl -X POST http://localhost:1337/api/v1/data/load-references
 ```
 
+To see stats on data, make a GET request or browse to http://localhost:1337/api/v1/data/stats
+
 ## Viewing and Deleting Data
 
 Go to the Neo Browser at http://localhost:7474/browser/
@@ -81,6 +83,8 @@ Add this stanza to `claude_desktop_config.json`:
 
 See [Connect Local Servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers) for detailed
 documentation.
+
+You may also want to create a Project. See [claude_project.md](docs/claude_project.md) for suggested content.
 
 ### Consuming MCP Tools With Claude Code
 
@@ -165,7 +169,8 @@ The backend supports any client via WebSocket (for real-time chat) and REST (for
 
 **Endpoint:** `ws://localhost:1337/ws`
 
-Uses STOMP protocol over WebSocket with SockJS fallback. Any STOMP client library works (e.g., `@stomp/stompjs` for JavaScript, `stomp.py` for Python).
+Uses STOMP protocol over WebSocket with SockJS fallback. Any STOMP client library works (e.g., `@stomp/stompjs` for
+JavaScript, `stomp.py` for Python).
 
 **Authentication:** Pass an optional JWT token as a query parameter:
 
@@ -178,7 +183,7 @@ If no token is provided, an anonymous user is created automatically.
 #### STOMP Channels
 
 | Direction | Destination             | Purpose                       |
-| --------- | ----------------------- | ----------------------------- |
+|-----------|-------------------------|-------------------------------|
 | Subscribe | `/user/queue/messages`  | Receive chat responses        |
 | Subscribe | `/user/queue/status`    | Receive typing/status updates |
 | Publish   | `/app/chat.sendToJesse` | Send message to AI bot        |
@@ -189,7 +194,9 @@ If no token is provided, an anonymous user is created automatically.
 **Sending a message:**
 
 ```json
-{ "body": "your message here" }
+{
+  "body": "your message here"
+}
 ```
 
 **Receiving a message:**
@@ -259,24 +266,24 @@ Authorization: Bearer <JWT>
 ### Example: Minimal JavaScript Client
 
 ```javascript
-import { Client } from '@stomp/stompjs';
+import {Client} from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
 const client = new Client({
-  webSocketFactory: () => new SockJS('http://localhost:1337/ws'),
-  onConnect: () => {
-    // Subscribe to responses
-    client.subscribe('/user/queue/messages', (frame) => {
-      const message = JSON.parse(frame.body);
-      console.log('Received:', message.content);
-    });
+    webSocketFactory: () => new SockJS('http://localhost:1337/ws'),
+    onConnect: () => {
+        // Subscribe to responses
+        client.subscribe('/user/queue/messages', (frame) => {
+            const message = JSON.parse(frame.body);
+            console.log('Received:', message.content);
+        });
 
-    // Send a message
-    client.publish({
-      destination: '/app/chat.sendToJesse',
-      body: JSON.stringify({ body: 'Hello!' }),
-    });
-  },
+        // Send a message
+        client.publish({
+            destination: '/app/chat.sendToJesse',
+            body: JSON.stringify({body: 'Hello!'})
+        });
+    }
 });
 
 client.activate();
