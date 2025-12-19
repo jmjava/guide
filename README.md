@@ -381,13 +381,43 @@ Tests require the following:
 export OPENAI_API_KEY=sk-your-key-here
 ```
 
-2. **Neo4j**: By default, tests use **Testcontainers** to automatically spin up an isolated Neo4j instance. No manual setup required—Docker must be running.
+2. **Neo4j**: See the [Local vs CI Testing](#local-vs-ci-testing) section below.
 
-Alternatively, for faster test runs during development, you can use a local Neo4j instance. Edit `src/test/kotlin/com/embabel/guide/Neo4jTestContainer.kt` and set `USE_LOCAL_NEO4J = true`, then start Neo4j:
+### Local vs CI Testing
+
+The test suite uses Neo4j, which can be provided in two ways:
+
+| Mode                  | `USE_LOCAL_NEO4J` | How Neo4j is provided                       | Best for                                       |
+| --------------------- | ----------------- | ------------------------------------------- | ---------------------------------------------- |
+| **CI (default)**      | `false`           | Testcontainers spins up Neo4j automatically | GitHub Actions, fresh environments             |
+| **Local development** | `true`            | You run Neo4j via Docker Compose            | Faster iteration, avoids Testcontainers issues |
+
+#### For Local Development
+
+Some Docker environments have version mismatches that cause Testcontainers to fail. To run tests locally:
+
+1. **Start Neo4j**:
 
 ```bash
 docker compose up neo4j -d
 ```
+
+2. **Run tests with `USE_LOCAL_NEO4J=true`**:
+
+```bash
+export OPENAI_API_KEY=sk-your-key-here
+USE_LOCAL_NEO4J=true ./mvnw test
+```
+
+Or add to your shell profile for persistence:
+
+```bash
+export USE_LOCAL_NEO4J=true
+```
+
+#### For CI
+
+Leave `USE_LOCAL_NEO4J = false` (the default). GitHub Actions has a compatible Docker environment where Testcontainers works correctly.
 
 ### Running Tests
 
