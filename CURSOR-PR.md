@@ -473,7 +473,13 @@ Tests use Testcontainers to automatically spin up Neo4j. Just needs `OPENAI_API_
 
 #### For Local Development
 
-Some Docker environments have Testcontainers compatibility issues. Use local Neo4j instead:
+Some Docker environments have Testcontainers compatibility issues due to Docker API version mismatches. The error looks like:
+
+```
+client version 1.32 is too old. Minimum supported API version is 1.44
+```
+
+**Option 1: Use local Neo4j (recommended)**
 
 ```bash
 # 1. Start Neo4j
@@ -485,6 +491,17 @@ export OPENAI_API_KEY=sk-your-key-here
 # 3. Run tests with local Neo4j
 USE_LOCAL_NEO4J=true ./mvnw test
 ```
+
+**Option 2: Fix Testcontainers Docker API version**
+
+Add to `~/.testcontainers.properties`:
+
+```properties
+docker.host=unix:///var/run/docker.sock
+docker.api.version=1.44
+```
+
+This may fix the issue for some tests, but due to static class initialization order, it doesn't reliably fix all tests. Option 1 is more reliable.
 
 ---
 
