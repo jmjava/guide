@@ -99,6 +99,48 @@ Start via `claude --debug` to see more logging.
 
 See [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp) for further information.
 
+### Consuming MCP Tools With Cursor
+
+#### 1) Ensure the MCP server is running
+
+Before troubleshooting Cursor, confirm the server is up and returning SSE headers:
+
+```bash
+curl -i --max-time 3 http://localhost:1337/sse
+```
+
+If you're running the server on a different port (for example `1338`), update the URL accordingly.
+
+#### 2) Configure Cursor MCP
+
+Cursor MCP config (Linux):
+
+- `~/.cursor/mcp.json`
+
+Example (recommended: use `mcp-remote` as a stdio bridge for SSE):
+
+```json
+{
+  "mcpServers": {
+    "embabel-dev": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:1337/sse", "--transport", "sse-only"]
+    }
+  }
+}
+```
+
+#### 3) Reload Cursor to reconnect
+
+If you start the server after Cursor is already running, or if the server was temporarily down, Cursor may not
+automatically respawn the MCP process. In Cursor:
+
+- **Command Palette** → **Developer: Reload Window**
+
+You should then see the MCP server listed with tools enabled:
+
+![Cursor Installed MCP Servers](images/cursor-mcp-installed-servers.svg)
+
 #### Auto-Approving Embabel MCP Tools
 
 By default, Claude Code asks for confirmation before running MCP tools. When you accept a tool with "Yes, don't ask
@@ -126,28 +168,32 @@ The backend supports any client via WebSocket (for real-time chat) and REST (for
 Uses STOMP protocol over WebSocket with SockJS fallback. Any STOMP client library works (e.g., `@stomp/stompjs` for JavaScript, `stomp.py` for Python).
 
 **Authentication:** Pass an optional JWT token as a query parameter:
+
 ```
 ws://localhost:1337/ws?token=<JWT>
 ```
+
 If no token is provided, an anonymous user is created automatically.
 
 #### STOMP Channels
 
-| Direction | Destination | Purpose |
-|-----------|-------------|---------|
-| Subscribe | `/user/queue/messages` | Receive chat responses |
-| Subscribe | `/user/queue/status` | Receive typing/status updates |
-| Publish | `/app/chat.sendToJesse` | Send message to AI bot |
-| Publish | `/app/presence.ping` | Keep-alive (send every 30s) |
+| Direction | Destination             | Purpose                       |
+| --------- | ----------------------- | ----------------------------- |
+| Subscribe | `/user/queue/messages`  | Receive chat responses        |
+| Subscribe | `/user/queue/status`    | Receive typing/status updates |
+| Publish   | `/app/chat.sendToJesse` | Send message to AI bot        |
+| Publish   | `/app/presence.ping`    | Keep-alive (send every 30s)   |
 
 #### Message Formats
 
 **Sending a message:**
+
 ```json
 { "body": "your message here" }
 ```
 
 **Receiving a message:**
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -159,6 +205,7 @@ If no token is provided, an anonymous user is created automatically.
 ```
 
 **Receiving a status update:**
+
 ```json
 {
   "fromUserId": "bot:jesse",
@@ -173,6 +220,7 @@ CORS is open (`*`), no special headers required beyond `Content-Type: applicatio
 #### Authentication Endpoints
 
 **Register:**
+
 ```
 POST /api/hub/register
 {
@@ -185,6 +233,7 @@ POST /api/hub/register
 ```
 
 **Login:**
+
 ```
 POST /api/hub/login
 { "username": "jane", "password": "secret" }
@@ -194,11 +243,13 @@ Response:
 ```
 
 **List Personas:**
+
 ```
 GET /api/hub/personas
 ```
 
 **Update Persona** (requires auth):
+
 ```
 PUT /api/hub/persona/mine
 Authorization: Bearer <JWT>
@@ -223,9 +274,9 @@ const client = new Client({
     // Send a message
     client.publish({
       destination: '/app/chat.sendToJesse',
-      body: JSON.stringify({ body: 'Hello!' })
+      body: JSON.stringify({ body: 'Hello!' }),
     });
-  }
+  },
 });
 
 client.activate();
@@ -233,16 +284,79 @@ client.activate();
 
 ## Docker
 
-Run with Docker Compose:
+### Start (Docker Compose)
+
+This will start `neo4j` + `guide`.
 
 ```bash
-docker compose up
+docker compose up --build -d
+```
+
+#### Port conflicts
+
+If port `1337` is already in use (for example, the `chatbot` app is running), override the exposed port:
+
+```bash
+GUIDE_PORT=1338 docker compose up --build -d
+```
+
+This maps container port `1337` → host port `1338`, so MCP SSE becomes:
+
+- `http://localhost:1338/sse`
+
+#### Compose config overrides
+
+Docker Compose supports environment variable overrides. You can set them inline (shown below) or put them in a local
+`.env` file next to `compose.yaml` (Docker Compose auto-loads it).
+
+- **`GUIDE_PORT`**: override host port mapping (default `1337`)
+- **`OPENAI_API_KEY`**: required for LLM calls
+- **`NEO4J_VERSION` / `NEO4J_USERNAME` / `NEO4J_PASSWORD`**: Neo4j settings (optional)
+- **`DISCORD_TOKEN`**: optional, to enable the Discord bot
+
+#### OpenAI API key
+
+The `guide` container needs `OPENAI_API_KEY`. You can:
+
+1. **Create a `.env` file** next to `compose.yaml`:
+
+```bash
+OPENAI_API_KEY=sk-your-key-here
+```
+
+2. **Or pass it inline**:
+
+```bash
+OPENAI_API_KEY=sk-... docker compose up --build -d
+```
+
+#### Verify MCP
+
+```bash
+PORT=${GUIDE_PORT:-1337}
+curl -i --max-time 3 "http://localhost:${PORT}/sse"
+```
+
+You should see `Content-Type: text/event-stream` and an `event:endpoint` line.
+
+#### Optional: run the frontend
+
+The `frontend` service is behind a Compose profile (it requires the `../embabel-hub` repo checkout):
+
+```bash
+COMPOSE_PROFILES=frontend docker compose up --build -d
+```
+
+#### Stop
+
+```bash
+docker compose down --remove-orphans
 ```
 
 ### Environment Variables
 
 | Variable         | Default                        | Description            |
-|------------------|--------------------------------|------------------------|
+| ---------------- | ------------------------------ | ---------------------- |
 | `NEO4J_VERSION`  | `2025.10.1-community-bullseye` | Neo4j Docker image tag |
 | `NEO4J_USERNAME` | `neo4j`                        | Neo4j username         |
 | `NEO4J_PASSWORD` | `brahmsian`                    | Neo4j password         |
@@ -252,8 +366,41 @@ docker compose up
 Example:
 
 ```bash
-NEO4J_PASSWORD=mysecretpassword OPENAI_API_KEY=sk-... docker compose up
+NEO4J_PASSWORD=mysecretpassword OPENAI_API_KEY=sk-... GUIDE_PORT=1338 docker compose up --build -d
 ```
+
+## Testing
+
+### Prerequisites
+
+Tests require the following:
+
+1. **OpenAI API Key**: Set `OPENAI_API_KEY` in your environment before running tests:
+
+```bash
+export OPENAI_API_KEY=sk-your-key-here
+```
+
+2. **Neo4j**: By default, tests use **Testcontainers** to automatically spin up an isolated Neo4j instance. No manual setup required—Docker must be running.
+
+Alternatively, for faster test runs during development, you can use a local Neo4j instance. Edit `src/test/kotlin/com/embabel/guide/Neo4jTestContainer.kt` and set `USE_LOCAL_NEO4J = true`, then start Neo4j:
+
+```bash
+docker compose up neo4j -d
+```
+
+### Running Tests
+
+```bash
+./mvnw test
+```
+
+All 38 tests should pass, including:
+
+- Hub API controller tests
+- User service tests
+- Neo4j repository tests
+- **MCP Security regression tests** (verifies `/sse` and `/mcp` endpoints are not blocked by Spring Security)
 
 ## Miscellaneous
 
@@ -264,5 +411,3 @@ To kill the server:
 ```aiignore
 lsof -ti:1337 | xargs kill -9
 ```
-
-
