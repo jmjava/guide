@@ -84,6 +84,8 @@ Add this stanza to `claude_desktop_config.json`:
 See [Connect Local Servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers) for detailed
 documentation.
 
+You may also want to create a Project. See [claude_project.md](docs/claude_project.md) for suggested content.
+
 ### Consuming MCP Tools With Claude Code
 
 If you're using Claude Code, adding the Embabel MCP server will
