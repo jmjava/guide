@@ -36,6 +36,7 @@ public class DataManager {
 
     private final HierarchicalContentReader hierarchicalContentReader = new TikaHierarchicalContentReader();
 
+    // Refresh only snapshots
     private final ContentRefreshPolicy contentRefreshPolicy = UrlSpecificContentRefreshPolicy.containingAny(
             "-SNAPSHOT"
     );
@@ -47,6 +48,11 @@ public class DataManager {
         this.store = store;
         this.guideProperties = guideProperties;
         this.references = LlmReferenceProviders.fromYmlFile(guideProperties.referencesFile());
+        store.provision();
+        if (guideProperties.reloadContentOnStartup()) {
+            logger.info("Reloading RAG content on startup");
+            loadReferences();
+        }
     }
 
     public Stats getStats() {
@@ -65,10 +71,6 @@ public class DataManager {
         return referencesForAllUsers();
     }
 
-    public void provisionDatabase() {
-        store.provision();
-    }
-
     @Transactional(readOnly = true)
     public int count() {
         return store.count();
@@ -80,8 +82,6 @@ public class DataManager {
      * @param dir absolute path
      */
     public DirectoryParsingResult ingestDirectory(String dir) {
-        store.provision();
-
         var ft = FileTools.readOnly(dir);
         var directoryParsingResult = new TikaHierarchicalContentReader()
                 .parseFromDirectory(ft, new DirectoryParsingConfig());
@@ -99,8 +99,6 @@ public class DataManager {
      * @param url the URL to ingest
      */
     public void ingestPage(String url) {
-        store.provision();
-
         var root = contentRefreshPolicy
                 .ingestUriIfNeeded(store, hierarchicalContentReader, url);
         if (root != null) {

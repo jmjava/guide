@@ -17,17 +17,19 @@ import java.util.Set;
 /**
  * Configuration properties for the Guide application.
  *
- * @param defaultPersona name of the default persona to use
- * @param chatLlm        LLM options for chat
- * @param projectsPath   path under user's home directory where projects are created
- * @param chunkerConfig  chunker configuration for RAG ingestion
- * @param referencesFile YML files containing LLM references such as GitHub repositories and classpath info
- * @param urls           list of URLs to ingest--for example, documentation and blogs
- * @param toolGroups     toolGroups, such as "web", that are allowed
+ * @param reloadContentOnStartup whether to reload RAG content on startup
+ * @param defaultPersona         name of the default persona to use
+ * @param chatLlm                LLM options for chat
+ * @param projectsPath           path under user's home directory where projects are created
+ * @param chunkerConfig          chunker configuration for RAG ingestion
+ * @param referencesFile         YML files containing LLM references such as GitHub repositories and classpath info
+ * @param urls                   list of URLs to ingest--for example, documentation and blogs
+ * @param toolGroups             toolGroups, such as "web", that are allowed
  */
 @Validated
 @ConfigurationProperties(prefix = "guide")
 public record GuideProperties(
+        boolean reloadContentOnStartup,
         @NotBlank(message = "defaultPersona must not be blank")
         String defaultPersona,
         LlmOptions chatLlm,

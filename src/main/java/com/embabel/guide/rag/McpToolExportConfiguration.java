@@ -7,6 +7,9 @@ import com.embabel.guide.GuideProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Export MCP tools
+ */
 @Configuration
 class McpToolExportConfiguration {
 
@@ -27,7 +30,7 @@ class McpToolExportConfiguration {
     }
 
     @Bean
-    McpToolExport codeReferenceTools(
+    McpToolExport referenceTools(
             DataManager dataManager,
             GuideProperties properties) {
         return McpToolExport.fromLlmReferences(

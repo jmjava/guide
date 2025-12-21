@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Web endpoints for ingestion
+ * Web endpoints for ingestion and content management
  */
 @RestController
 @RequestMapping("/api/v1/data")
