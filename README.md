@@ -293,11 +293,27 @@ client.activate();
 
 ### Start (Docker Compose)
 
-This will start `neo4j` + `guide`.
+By default, this starts `neo4j` + `guide` (the Java application):
 
 ```bash
 docker compose up --build -d
 ```
+
+#### Running Neo4j only (for local Java development)
+
+If you're running the Java application locally (e.g., from your IDE), you can start only Neo4j:
+
+```bash
+COMPOSE_PROFILES= docker compose up -d
+```
+
+Or equivalently:
+
+```bash
+docker compose up neo4j -d
+```
+
+This is useful during development when you want faster iteration with your local Java process.
 
 #### Port conflicts
 
@@ -362,13 +378,14 @@ docker compose down --remove-orphans
 
 ### Environment Variables
 
-| Variable         | Default                        | Description            |
-| ---------------- | ------------------------------ | ---------------------- |
-| `NEO4J_VERSION`  | `2025.10.1-community-bullseye` | Neo4j Docker image tag |
-| `NEO4J_USERNAME` | `neo4j`                        | Neo4j username         |
-| `NEO4J_PASSWORD` | `brahmsian`                    | Neo4j password         |
-| `OPENAI_API_KEY` | (required)                     | OpenAI API key         |
-| `DISCORD_TOKEN`  | (optional)                     | Discord bot token      |
+| Variable           | Default                        | Description                                      |
+| ------------------ | ------------------------------ | ------------------------------------------------ |
+| `COMPOSE_PROFILES` | `java`                         | Set to empty to run Neo4j only (no Java service) |
+| `NEO4J_VERSION`    | `2025.10.1-community-bullseye` | Neo4j Docker image tag                           |
+| `NEO4J_USERNAME`   | `neo4j`                        | Neo4j username                                   |
+| `NEO4J_PASSWORD`   | `brahmsian`                    | Neo4j password                                   |
+| `OPENAI_API_KEY`   | (required)                     | OpenAI API key                                   |
+| `DISCORD_TOKEN`    | (optional)                     | Discord bot token                                |
 
 Example:
 

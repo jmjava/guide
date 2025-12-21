@@ -41,6 +41,8 @@ services:
     restart: "no"  # Only run once
 
   guide:
+    profiles:
+      - java
     build:
       context: .
       dockerfile: Dockerfile
