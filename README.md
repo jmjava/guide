@@ -61,17 +61,14 @@ Within the inspector UI, connect to `http://localhost:1337/sse`.
 
 ## Consuming Embabel MCP Server Tools
 
-### Appendix
-
-- [Health check](#ensure-the-mcp-server-is-running)
 - [Claude Desktop](#claude-desktop)
 - [Claude Code](#claude-code)
 - [Cursor](#cursor)
 - [Antigravity](#antigravity)
 
-### Ensure the MCP server is running
+### Verifying the Server is Running
 
-Before troubleshooting Cursor, confirm the server is up and returning SSE headers:
+Before configuring a client, confirm the server is up and returning SSE headers:
 
 ```bash
 curl -i --max-time 3 http://localhost:1337/sse
@@ -79,7 +76,7 @@ curl -i --max-time 3 http://localhost:1337/sse
 
 If you're running the server on a different port (for example `1338`), update the URL accordingly.
 
-#### Claude Desktop
+### Claude Desktop
 
 Add this stanza to `claude_desktop_config.json`:
 
@@ -106,7 +103,7 @@ documentation.
 
 You may also want to create a Project. See [claude_project.md](docs/claude_project.md) for suggested content.
 
-#### Claude Code
+### Claude Code
 
 If you're using Claude Code, adding the Embabel MCP server will
 powerfully augment its capabilities for working on Embabel applications
@@ -141,7 +138,7 @@ how permissions work.
 
 ### Cursor
 
-#### 2) Configure Cursor MCP
+#### Configuration
 
 Cursor MCP config (Linux):
 
@@ -160,7 +157,7 @@ Example (recommended: use `mcp-remote` as a stdio bridge for SSE):
 }
 ```
 
-#### 3) Reload Cursor to reconnect
+#### Reload to Reconnect
 
 If you start the server after Cursor is already running, or if the server was temporarily down, Cursor may not
 automatically respawn the MCP process. In Cursor:
@@ -173,7 +170,7 @@ You should then see the MCP server listed with tools enabled:
 
 ### Antigravity
 
-#### Configure Antigravity MCP
+#### Configuration
 
 - Open the MCP store via the "..." dropdown at the top of the editor's agent panel.
 - Click on "Manage MCP Servers"
