@@ -18,10 +18,10 @@ public class DataManagerController {
         this.dataManager = dataManager;
     }
 
-    @GetMapping("/stats")
-    public DataManager.Stats getStats() {
-        return dataManager.getStats();
-    }
+//    @GetMapping("/stats")
+//    public DataManager.Stats getStats() {
+//        return dataManager.getStats();
+//    }
 
     @PostMapping("/load-references")
     public String loadReferences() {

@@ -56,10 +56,10 @@ public class DataManager {
         }
     }
 
-    public Stats getStats() {
-        int chunkCount = store.count();
-        return new Stats(chunkCount);
-    }
+//    public Stats getStats() {
+//        int chunkCount = store.count();
+//        return new Stats(chunkCount);
+//    }
 
     @NonNull
     public List<LlmReference> referencesForAllUsers() {
