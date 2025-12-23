@@ -5,6 +5,29 @@
 # - true: Use local Neo4j (faster, requires Neo4j running on localhost:7687)
 # - false (default): Use TestContainers (slower startup, but fully isolated)
 
+OPENAI_API_KEY: test-fake-key
+
+spring:
+  ai:
+    mcp:
+      client:
+        enabled: false
+
+embabel:
+  agent-platform:
+    scanning:
+      auto: false
+
+  models:
+    default-llm: test-llm
+    default-embedding-model: test
+    embedding-services:
+      best: test
+      cheapest: test
+    llms:
+      best: test-llm
+      cheapest: test-llm
+
 # Logging configuration for tests
 logging:
   config: classpath:logback-test.xml
