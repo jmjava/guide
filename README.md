@@ -10,18 +10,21 @@
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 ![IntelliJ IDEA](https://img.shields.io/badge/IntelliJIDEA-000000.svg?style=for-the-badge&logo=intellij-idea&logoColor=white)
 
-# Embabel Hub Backend: Chat and MCP Server
+# Embabel Guide : Chat and MCP Server
 
 <img src="https://github.com/embabel/embabel-agent/blob/main/embabel-agent-api/images/315px-Meister_der_Weltenchronik_001.jpg?raw=true" width="180">
 
-Embabel Hub exposes resources relating to the Embabel Agent Framework, such
+Guide exposes resources relating to the Embabel Agent Framework, such
 as documentation, relevant blogs and other content, and up-to-the-minute API information.
 
 This is exposed in two ways:
 
-- Via a chatbot for the Embabel Hub front end
+- Via a chat server (WebSocket/STOMP) for custom front-ends
+- Via spring shell
 - Via an MCP server for integration with Claude Desktop, Claude Code and
   other MCP clients
+
+> **Note:** The chat server and Spring Shell conflict with each other. By default, the chat server is enabled. To use Spring Shell instead, uncomment the relevant lines in `pom.xml`.
 
 ## Loading data
 
@@ -391,14 +394,6 @@ curl -i --max-time 3 "http://localhost:${PORT}/sse"
 ```
 
 You should see `Content-Type: text/event-stream` and an `event:endpoint` line.
-
-#### Optional: run the frontend
-
-The `frontend` service is behind a Compose profile (it requires the `../embabel-hub` repo checkout):
-
-```bash
-COMPOSE_PROFILES=frontend docker compose up --build -d
-```
 
 #### Stop
 
