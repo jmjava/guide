@@ -4,7 +4,7 @@ import com.embabel.agent.api.common.LlmReference;
 import com.embabel.agent.api.common.reference.LlmReferenceProviders;
 import com.embabel.agent.api.identity.User;
 import com.embabel.agent.rag.ingestion.*;
-import com.embabel.agent.rag.store.ChunkingContentElementRepository;
+import com.embabel.agent.rag.neo.drivine.DrivineStore;
 import com.embabel.agent.tools.file.FileTools;
 import com.embabel.guide.GuideProperties;
 import com.google.common.collect.Iterables;
@@ -25,15 +25,16 @@ import java.util.List;
 @Service
 public class DataManager {
 
-    // TODO will be replaced with standard from ContentElementRepository
     public record Stats(
-            int chunks) {
+            int chunkCount,
+            int documentCount,
+            int contentElementCount) {
     }
 
     private final Logger logger = LoggerFactory.getLogger(DataManager.class);
     private final GuideProperties guideProperties;
     private final List<LlmReference> references;
-    private final ChunkingContentElementRepository store;
+    private final DrivineStore store;
 
     private final HierarchicalContentReader hierarchicalContentReader = new TikaHierarchicalContentReader();
 
@@ -43,7 +44,7 @@ public class DataManager {
     );
 
     public DataManager(
-            ChunkingContentElementRepository store,
+            DrivineStore store,
             GuideProperties guideProperties
     ) {
         this.store = store;
@@ -56,10 +57,10 @@ public class DataManager {
         }
     }
 
-//    public Stats getStats() {
-//        int chunkCount = store.count();
-//        return new Stats(chunkCount);
-//    }
+    public Stats getStats() {
+        var info = store.info();
+        return new Stats(info.getChunkCount(), info.getDocumentCount(), info.getContentElementCount());
+    }
 
     @NonNull
     public List<LlmReference> referencesForAllUsers() {
