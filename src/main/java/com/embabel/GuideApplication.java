@@ -15,20 +15,33 @@
  */
 package com.embabel;
 
+import org.drivine.autoconfigure.EnableDrivine;
+import org.drivine.autoconfigure.EnableDrivinePropertiesConfig;
+import org.drivine.manager.PersistenceManager;
+import org.drivine.manager.PersistenceManagerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
 @EnableScheduling
+@EnableDrivine
+@EnableDrivinePropertiesConfig
 public class GuideApplication {
+
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(GuideApplication.class);
         app.setWebApplicationType(WebApplicationType.SERVLET);
         app.run(args);
+    }
+
+    @Bean("neo")
+    public PersistenceManager neoManager(PersistenceManagerFactory factory) {
+        return factory.get("neo");
     }
 }

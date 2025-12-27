@@ -69,7 +69,7 @@ class Neo4jPropertiesInitializer : ApplicationContextInitializer<ConfigurableApp
 }
 
 @Configuration
-@ComponentScan(basePackages = ["org.drivine", "com.embabel"])
+@ComponentScan(basePackages = ["com.embabel"])
 @PropertySource("classpath:application.yml")
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 @EnableDrivineTestConfig
