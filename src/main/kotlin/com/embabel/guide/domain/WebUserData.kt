@@ -1,12 +1,16 @@
 package com.embabel.guide.domain
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import org.drivine.annotation.NodeFragment
+import org.drivine.annotation.NodeId
 
 /**
- * Simple data representation of WebUser properties for Drivine composition.
+ * Node fragment representing a WebUser in the graph.
  */
+@NodeFragment(labels = ["WebUser"])
 @JsonIgnoreProperties(ignoreUnknown = true)
 open class WebUserData(
+    @NodeId
     var id: String,
     var displayName: String,
     var userName: String,

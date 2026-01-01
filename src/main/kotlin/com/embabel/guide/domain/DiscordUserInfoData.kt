@@ -2,12 +2,16 @@ package com.embabel.guide.domain
 
 import com.embabel.agent.discord.DiscordUserInfo
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import org.drivine.annotation.NodeFragment
+import org.drivine.annotation.NodeId
 
 /**
- * Simple data representation of DiscordUserInfo properties for Drivine composition.
+ * Node fragment representing Discord user info in the graph.
  */
+@NodeFragment(labels = ["DiscordUserInfo"])
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class DiscordUserInfoData(
+    @NodeId
     var id: String? = null,
     var username: String? = null,
     var discriminator: String? = null,

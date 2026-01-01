@@ -1,21 +1,23 @@
 package com.embabel.guide.domain
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
+import org.drivine.annotation.NodeFragment
 
 /**
- * Data representation for anonymous web users.
- * Extends WebUserData to add the Anonymous label distinction.
+ * Node fragment for anonymous web users.
+ * Has both WebUser and Anonymous labels in the graph.
  */
+@NodeFragment(labels = ["WebUser", "Anonymous"])
 @JsonIgnoreProperties(ignoreUnknown = true)
 class AnonymousWebUserData(
-    userId: String,
-    userDisplayName: String,
-    userUsername: String,
+    id: String,
+    displayName: String,
+    userName: String,
     userEmail: String?,
     passwordHash: String?,
     refreshToken: String?
-) : WebUserData(userId, userDisplayName, userUsername, userEmail, passwordHash, refreshToken) {
+) : WebUserData(id, displayName, userName, userEmail, passwordHash, refreshToken) {
 
     override fun toString(): String =
-        "AnonymousWebUserData{userId='$id', userDisplayName='$displayName', userUsername='$userName'}"
+        "AnonymousWebUserData{id='$id', displayName='$displayName', userName='$userName'}"
 }
