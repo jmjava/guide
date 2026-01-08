@@ -362,10 +362,15 @@ client.activate();
 
 ### Start (Docker Compose)
 
+**Note:** You must build the JAR locally first before running Docker:
+```bash
+mvn clean package -DskipTests
+```
+
 By default, this starts `neo4j` + `guide` (the Java application):
 
 ```bash
-docker compose up --build -d
+docker compose up -d
 ```
 
 #### Running Neo4j only (for local Java development)
@@ -389,7 +394,7 @@ This is useful during development when you want faster iteration with your local
 If port `1337` is already in use (for example, the `chatbot` app is running), override the exposed port:
 
 ```bash
-GUIDE_PORT=1338 docker compose up --build -d
+GUIDE_PORT=1338 docker compose up -d
 ```
 
 This maps container port `1337` → host port `1338`, so MCP SSE becomes:
@@ -419,7 +424,7 @@ OPENAI_API_KEY=sk-your-key-here
 2. **Or pass it inline**:
 
 ```bash
-OPENAI_API_KEY=sk-... docker compose up --build -d
+OPENAI_API_KEY=sk-... docker compose up -d
 ```
 
 #### Verify MCP
@@ -451,7 +456,7 @@ docker compose down --remove-orphans
 Example:
 
 ```bash
-NEO4J_PASSWORD=mysecretpassword OPENAI_API_KEY=sk-... GUIDE_PORT=1338 docker compose up --build -d
+NEO4J_PASSWORD=mysecretpassword OPENAI_API_KEY=sk-... GUIDE_PORT=1338 docker compose up -d
 ```
 
 ## Testing

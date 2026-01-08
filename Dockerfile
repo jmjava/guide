@@ -1,19 +1,14 @@
-#
-# Multi-stage build so `docker compose up --build` works from a fresh clone.
-#
+# Use JRE for runtime
+FROM eclipse-temurin:21-jre-jammy
 
-FROM maven:3.9.9-eclipse-temurin-21 AS build
-WORKDIR /workspace
-
-COPY pom.xml ./
-COPY src ./src
-
-RUN mvn -q -DskipTests package
-
-FROM eclipse-temurin:21-jre-jammy AS runtime
 WORKDIR /app
 
-COPY --from=build /workspace/target/*.jar /app/app.jar
+# Copy the pre-built jar from local target directory
+# Build the JAR locally first with: mvn clean package -DskipTests
+COPY target/*.jar app.jar
 
+# Expose the application port
 EXPOSE 1337
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+
+# Run the application
+ENTRYPOINT ["java", "-jar", "app.jar"]

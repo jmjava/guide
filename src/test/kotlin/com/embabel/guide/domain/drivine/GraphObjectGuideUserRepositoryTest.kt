@@ -16,6 +16,7 @@
 package com.embabel.guide.domain.drivine
 
 import com.embabel.guide.Neo4jPropertiesInitializer
+import com.embabel.guide.TestDrivineStoreConfiguration
 import com.embabel.guide.domain.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -23,6 +24,7 @@ import org.springframework.ai.mcp.client.common.autoconfigure.McpClientAutoConfi
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.transaction.annotation.Transactional
@@ -38,6 +40,7 @@ import java.util.*
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = [Neo4jPropertiesInitializer::class])
 @ImportAutoConfiguration(exclude = [McpClientAutoConfiguration::class])
+@Import(TestDrivineStoreConfiguration::class)
 @Transactional
 class GraphObjectGuideUserRepositoryTest {
 

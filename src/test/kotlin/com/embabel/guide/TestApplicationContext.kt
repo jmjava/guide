@@ -73,4 +73,5 @@ class Neo4jPropertiesInitializer : ApplicationContextInitializer<ConfigurableApp
 @PropertySource("classpath:application.yml")
 @EnableAspectJAutoProxy(proxyTargetClass = true)
 @EnableDrivineTestConfig
+@Import(TestDrivineStoreConfiguration::class)
 class TestAppContext

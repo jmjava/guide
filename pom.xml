@@ -20,7 +20,24 @@
         <java.version>21</java.version>
         <embabel-agent.version>0.3.1</embabel-agent.version>
         <kotlin.version>2.2.0</kotlin.version>
+        <!-- Skip codegen by default; profile will enable it if codegen-gradle/gradlew exists -->
+        <codegen.skip>true</codegen.skip>
     </properties>
+
+    <profiles>
+        <!-- Profile activates when codegen-gradle/gradlew exists -->
+        <profile>
+            <id>codegen-available</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/codegen-gradle/gradlew</exists>
+                </file>
+            </activation>
+            <properties>
+                <codegen.skip>false</codegen.skip>
+            </properties>
+        </profile>
+    </profiles>
 
     <dependencies>
 
@@ -176,10 +193,14 @@
             </plugin>
 
             <!-- Run Gradle KSP to generate Drivine DSL code -->
+            <!-- Only runs if codegen-gradle/gradlew exists and codegen.skip is false -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
+                <configuration>
+                    <skip>${codegen.skip}</skip>
+                </configuration>
                 <executions>
                     <execution>
                         <id>gradle-ksp-codegen</id>
@@ -200,6 +221,7 @@
             </plugin>
 
             <!-- Include Gradle-generated sources in Maven build -->
+            <!-- If gradle-ksp-codegen runs, the sources will be generated, so this will add them -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
@@ -235,6 +257,7 @@
                             <sourceDirs>
                                 <sourceDir>${project.basedir}/src/main/kotlin</sourceDir>
                                 <sourceDir>${project.basedir}/src/main/java</sourceDir>
+                                <!-- If gradle-ksp-codegen runs, the sources will be generated here -->
                                 <sourceDir>${project.basedir}/codegen-gradle/build/generated/ksp/main/kotlin</sourceDir>
                             </sourceDirs>
                         </configuration>

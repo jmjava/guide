@@ -1,12 +1,14 @@
 package com.embabel.hub
 
 import com.embabel.guide.Neo4jPropertiesInitializer
+import com.embabel.guide.TestDrivineStoreConfiguration
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.springframework.ai.mcp.client.common.autoconfigure.McpClientAutoConfiguration
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
@@ -15,6 +17,7 @@ import org.springframework.test.context.ContextConfiguration
 @ActiveProfiles("test")
 @ContextConfiguration(initializers = [Neo4jPropertiesInitializer::class])
 @ImportAutoConfiguration(exclude = [McpClientAutoConfiguration::class])
+@Import(TestDrivineStoreConfiguration::class)
 class HubServiceTest {
 
     @Autowired
