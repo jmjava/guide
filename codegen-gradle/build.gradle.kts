@@ -21,6 +21,12 @@ version = "0.1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     mavenLocal()
+    maven {
+        url = uri("https://repo.embabel.com/artifactory/libs-snapshot")
+    }
+    maven {
+        url = uri("https://repo.embabel.com/artifactory/libs-release")
+    }
 }
 
 dependencies {
@@ -31,8 +37,8 @@ dependencies {
     ksp("org.drivine:drivine4j-codegen:0.0.12")
 
     // Dependencies needed for domain classes to compile
-    implementation("com.embabel.agent:embabel-agent-api:0.3.1-SNAPSHOT")
-    implementation("com.embabel.agent:embabel-agent-discord:0.3.1-SNAPSHOT")
+    implementation("com.embabel.agent:embabel-agent-api:0.3.2-SNAPSHOT")
+    implementation("com.embabel.agent:embabel-agent-discord:0.3.2-SNAPSHOT")
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.18.2")
 }
 
