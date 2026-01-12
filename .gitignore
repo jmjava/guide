@@ -1,3 +1,6 @@
+# Gradle
+.gradle/
+**/build/
 
 # MCP resources
 embabel-agent-api/src/main/resources/mcp/**
