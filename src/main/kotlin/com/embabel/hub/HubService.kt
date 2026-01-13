@@ -5,6 +5,9 @@ import com.embabel.guide.domain.GuideUser
 import com.embabel.guide.domain.GuideUserService
 import com.embabel.guide.domain.WebUserData
 import com.embabel.guide.util.UUIDv7
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 
@@ -68,8 +71,13 @@ class HubService(
         // Save the user through GuideUserService
         val guideUser = guideUserService.saveFromWebUser(webUser)
 
-        // Create a welcome thread for the new user
-        threadService.createWelcomeThread(guideUser.core.id)
+        // Create a welcome thread for the new user with AI-generated greeting (fire-and-forget)
+        CoroutineScope(Dispatchers.IO).launch {
+            threadService.createWelcomeThread(
+                ownerId = guideUser.core.id,
+                displayName = request.userDisplayName
+            )
+        }
 
         return guideUser
     }

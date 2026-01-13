@@ -3,12 +3,15 @@ package com.embabel.guide.chat.service
 import com.embabel.guide.chat.model.ThreadTimeline
 import com.embabel.guide.chat.repository.ThreadRepository
 import com.embabel.guide.util.UUIDv7
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
 import java.util.Optional
 
 @Service
 class ThreadService(
-    private val threadRepository: ThreadRepository
+    private val threadRepository: ThreadRepository,
+    private val ragAdapter: RagServiceAdapter
 ) {
 
     companion object {
@@ -17,6 +20,7 @@ class ThreadService(
         const val ROLE_TOOL = "tool"
 
         const val DEFAULT_WELCOME_MESSAGE = "Welcome! How can I help you today?"
+        const val WELCOME_PROMPT_TEMPLATE = "User %s has created a new account. Could you please greet and welcome them"
     }
 
     /**
@@ -61,10 +65,39 @@ class ThreadService(
     }
 
     /**
-     * Create a welcome thread for a new user.
-     * The thread is owned by the user, but the welcome message is from the system (no author).
+     * Create a welcome thread for a new user with an AI-generated greeting.
+     *
+     * Sends a prompt to the AI asking it to greet and welcome the user.
+     * The prompt itself is NOT stored in the thread - only the AI's response.
+     * The thread is owned by the user, but the welcome message has no author (system-generated).
+     *
+     * @param ownerId the user who owns the thread
+     * @param displayName the user's display name for the personalized greeting
      */
-    fun createWelcomeThread(
+    suspend fun createWelcomeThread(
+        ownerId: String,
+        displayName: String
+    ): ThreadTimeline = withContext(Dispatchers.IO) {
+        val prompt = WELCOME_PROMPT_TEMPLATE.format(displayName)
+        val welcomeMessage = ragAdapter.sendMessage(
+            message = prompt,
+            fromUserId = ownerId,  // Use the new user's ID for the chat session
+            onEvent = { } // No status updates needed for welcome message
+        )
+
+        createThread(
+            ownerId = ownerId,
+            title = "Welcome",
+            message = welcomeMessage,
+            role = ROLE_ASSISTANT,
+            authorId = null  // System message - no author
+        )
+    }
+
+    /**
+     * Create a welcome thread with a static message (for testing or fallback).
+     */
+    fun createWelcomeThreadWithMessage(
         ownerId: String,
         welcomeMessage: String = DEFAULT_WELCOME_MESSAGE
     ): ThreadTimeline {
@@ -73,7 +106,7 @@ class ThreadService(
             title = "Welcome",
             message = welcomeMessage,
             role = ROLE_ASSISTANT,
-            authorId = null  // System message - no author
+            authorId = null
         )
     }
 }

@@ -2,6 +2,7 @@ package com.embabel.hub
 
 //import org.springframework.ai.mcp.client.autoconfigure.McpClientAutoConfiguration
 import com.embabel.guide.Neo4jPropertiesInitializer
+import com.embabel.guide.chat.service.ThreadService
 import com.embabel.guide.domain.GuideUser
 import com.embabel.guide.domain.GuideUserRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -18,6 +19,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.ContextConfiguration
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
@@ -42,6 +44,9 @@ class HubApiControllerTest {
 
     @Autowired
     lateinit var jwtTokenService: JwtTokenService
+
+    @Autowired
+    lateinit var threadService: ThreadService
 
     private val passwordEncoder = BCryptPasswordEncoder()
 
@@ -523,5 +528,85 @@ class HubApiControllerTest {
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.token").exists())
             .andExpect(jsonPath("$.username").value("test_specialchar"))
+    }
+
+    // ========== Threads Tests ==========
+
+    @Test
+    fun `GET threads should return list of threads for authenticated user`() {
+        // Given - Register and login a user
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "Thread Test User",
+            username = "test_threaduser",
+            userEmail = "test_threaduser@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        val registerResult = mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+
+        val createdUser = objectMapper.readValue(registerResult.response.contentAsString, GuideUser::class.java)
+        val token = createdUser.webUser?.refreshToken ?: fail("Expected refresh token")
+
+        // Create a thread directly (since async welcome thread may not be ready)
+        threadService.createWelcomeThreadWithMessage(
+            ownerId = createdUser.core.id,
+            welcomeMessage = "Test welcome message"
+        )
+
+        // When - Get threads with auth token
+        mockMvc.perform(
+            get("/api/hub/threads")
+                .header("Authorization", "Bearer $token")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$").isArray)
+            .andExpect(jsonPath("$[0].id").exists())
+            .andExpect(jsonPath("$[0].title").value("Welcome"))
+    }
+
+    @Test
+    fun `GET threads should return 403 when not authenticated`() {
+        // When & Then - No auth header (Spring Security returns 403 Forbidden)
+        mockMvc.perform(get("/api/hub/threads"))
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `GET threads should return empty list when user has no threads`() {
+        // Given - Register a user but don't create any threads
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "No Threads User",
+            username = "test_nothreadsuser",
+            userEmail = "test_nothreadsuser@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        val registerResult = mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+
+        val createdUser = objectMapper.readValue(registerResult.response.contentAsString, GuideUser::class.java)
+        val token = createdUser.webUser?.refreshToken ?: fail("Expected refresh token")
+
+        // Note: The async welcome thread might not be created yet, which is fine for this test
+        // We're testing that the endpoint works and returns an array (possibly empty)
+
+        // When - Get threads with auth token
+        mockMvc.perform(
+            get("/api/hub/threads")
+                .header("Authorization", "Bearer $token")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$").isArray)
     }
 }

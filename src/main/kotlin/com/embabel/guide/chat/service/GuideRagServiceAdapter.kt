@@ -78,7 +78,7 @@ class GuideRagServiceAdapter(
         val messageOutputChannel = createOutputChannel(responseBuilder, onEvent) { isComplete = true }
 
         try {
-            val webUser = guideUserRepository.findByWebUserId(fromUserId)
+            val guideUser = guideUserRepository.findById(fromUserId)
                 .orElseThrow { RuntimeException("No user found with id: $fromUserId") }
 
             // Get or create session context for this user to maintain conversation continuity
@@ -87,7 +87,7 @@ class GuideRagServiceAdapter(
                 val dynamicChannel = DynamicOutputChannel()
                 // Set the delegate before creating the session to avoid initialization errors
                 dynamicChannel.currentDelegate = messageOutputChannel
-                val session = chatbot.createSession(webUser, dynamicChannel, null)
+                val session = chatbot.createSession(guideUser, dynamicChannel, null)
                 SessionContext(session, dynamicChannel)
             }
 
