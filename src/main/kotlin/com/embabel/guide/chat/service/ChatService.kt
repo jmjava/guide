@@ -12,10 +12,6 @@ class ChatService(private val messaging: SimpMessagingTemplate) {
         messaging.convertAndSendToUser(toUserId, "/queue/messages", msg)
     }
 
-    fun sendToRoom(room: String, msg: DeliveredMessage) {
-        messaging.convertAndSend("/topic/rooms/$room", msg)
-    }
-
     fun sendStatusToUser(toUserId: String, status: StatusMessage) {
         messaging.convertAndSendToUser(toUserId, "/queue/status", status)
     }

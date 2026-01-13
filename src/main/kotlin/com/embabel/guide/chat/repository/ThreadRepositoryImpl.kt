@@ -1,7 +1,6 @@
 package com.embabel.guide.chat.repository
 
 import com.embabel.guide.chat.model.*
-import com.embabel.guide.domain.GuideUser
 import com.embabel.guide.domain.GuideUserRepository
 import com.embabel.guide.util.UUIDv7
 import org.drivine.manager.GraphObjectManager
@@ -90,6 +89,15 @@ class ThreadRepositoryImpl(
         )
 
         return graphObjectManager.save(timeline)
+    }
+
+    @Transactional
+    override fun addMessage(threadId: String, message: MessageWithVersion): ThreadTimeline {
+        val timeline = findByThreadId(threadId).orElseThrow {
+            IllegalArgumentException("Thread not found: $threadId")
+        }
+        val updatedTimeline = timeline.withMessage(message)
+        return graphObjectManager.save(updatedTimeline)
     }
 
     @Transactional

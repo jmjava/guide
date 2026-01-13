@@ -1,5 +1,6 @@
 package com.embabel.guide.chat.repository
 
+import com.embabel.guide.chat.model.MessageWithVersion
 import com.embabel.guide.chat.model.ThreadTimeline
 import java.util.Optional
 
@@ -37,6 +38,15 @@ interface ThreadRepository {
         role: String,
         authorId: String? = null
     ): ThreadTimeline
+
+    /**
+     * Add a message to an existing thread.
+     *
+     * @param threadId the thread ID
+     * @param message the message to add
+     * @return the updated timeline
+     */
+    fun addMessage(threadId: String, message: MessageWithVersion): ThreadTimeline
 
     /**
      * Delete all threads (for testing).

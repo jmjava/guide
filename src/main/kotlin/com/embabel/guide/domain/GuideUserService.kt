@@ -43,6 +43,16 @@ class GuideUserService(
     }
 
     /**
+     * Finds a GuideUser by their ID.
+     *
+     * @param id the GuideUser's ID
+     * @return the GuideUser if found
+     */
+    fun findById(id: String): Optional<GuideUser> {
+        return guideUserRepository.findById(id)
+    }
+
+    /**
      * Finds a GuideUser by their WebUser ID.
      *
      * @param webUserId the WebUser's ID

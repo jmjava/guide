@@ -1,13 +1,28 @@
 package com.embabel.guide.chat.model
 
 import java.time.Instant
-import java.util.UUID
 
+/**
+ * Message delivered to a client, mapped from the persistent model.
+ */
 data class DeliveredMessage(
-    val id: String = UUID.randomUUID().toString(),
-    val fromUserId: String,
-    val toUserId: String? = null,
-    val room: String? = null,
+    val id: String,
+    val threadId: String,
+    val role: String,
     val body: String,
-    val ts: Instant = Instant.now()
-)
+    val ts: Instant,
+    val authorId: String? = null
+) {
+    companion object {
+        fun createFrom(msg: MessageWithVersion, threadId: String): DeliveredMessage {
+            return DeliveredMessage(
+                id = msg.message.messageId,
+                threadId = threadId,
+                role = msg.message.role,
+                body = msg.current.text,
+                ts = msg.message.createdAt ?: Instant.now(),
+                authorId = msg.authoredBy?.core?.id
+            )
+        }
+    }
+}

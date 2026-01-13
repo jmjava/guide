@@ -23,4 +23,8 @@ data class ThreadTimeline(
 ) {
     /** Messages sorted by messageId (UUIDv7 = chronological order). Sorted once on first access. */
     val messages: List<MessageWithVersion> by lazy { _messages.sortedBy { it.message.messageId } }
+
+    /** Returns a copy of this timeline with an additional message. */
+    fun withMessage(message: MessageWithVersion): ThreadTimeline =
+        copy(_messages = _messages + message)
 }

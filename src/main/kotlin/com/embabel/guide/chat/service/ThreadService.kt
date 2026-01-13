@@ -1,17 +1,20 @@
 package com.embabel.guide.chat.service
 
-import com.embabel.guide.chat.model.ThreadTimeline
+import com.embabel.guide.chat.model.*
 import com.embabel.guide.chat.repository.ThreadRepository
+import com.embabel.guide.domain.GuideUserService
 import com.embabel.guide.util.UUIDv7
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.springframework.stereotype.Service
+import java.time.Instant
 import java.util.Optional
 
 @Service
 class ThreadService(
     private val threadRepository: ThreadRepository,
-    private val ragAdapter: RagServiceAdapter
+    private val ragAdapter: RagServiceAdapter,
+    private val guideUserService: GuideUserService
 ) {
 
     companion object {
@@ -108,5 +111,54 @@ class ThreadService(
             role = ROLE_ASSISTANT,
             authorId = null
         )
+    }
+
+    /**
+     * Add a message to an existing thread.
+     *
+     * @param threadId the thread to add the message to
+     * @param text the message text
+     * @param role the message role (user, assistant, tool)
+     * @param authorId optional author ID (null for system messages)
+     * @return the created message
+     */
+    fun addMessage(
+        threadId: String,
+        text: String,
+        role: String,
+        authorId: String? = null
+    ): MessageWithVersion {
+        val now = Instant.now()
+
+        val author = if (authorId != null) {
+            guideUserService.findById(authorId).orElseThrow {
+                IllegalArgumentException("Author not found: $authorId")
+            }
+        } else {
+            null
+        }
+
+        val messageId = UUIDv7.generateString()
+        val versionId = UUIDv7.generateString()
+
+        val message = MessageWithVersion(
+            message = MessageData(
+                messageId = messageId,
+                threadId = threadId,
+                role = role,
+                createdAt = now
+            ),
+            current = MessageVersionData(
+                versionId = versionId,
+                createdAt = now,
+                editorRole = role,
+                reason = null,
+                text = text
+            ),
+            authoredBy = author
+        )
+
+        threadRepository.addMessage(threadId, message)
+        return message
     }
 }

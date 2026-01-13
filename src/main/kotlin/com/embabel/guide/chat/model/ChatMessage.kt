@@ -1,7 +1,9 @@
 package com.embabel.guide.chat.model
 
+/**
+ * Incoming chat message from a client.
+ */
 data class ChatMessage(
-    val toUserId: String? = null,
-    val room: String? = null,
+    val threadId: String,
     val body: String
 )
