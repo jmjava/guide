@@ -21,24 +21,26 @@ class FakeRagServiceAdapter : RagServiceAdapter {
     private val logger = LoggerFactory.getLogger(FakeRagServiceAdapter::class.java)
 
     override suspend fun sendMessage(
+        threadId: String,
         message: String,
         fromUserId: String,
+        priorMessages: List<PriorMessage>,
         onEvent: (String) -> Unit
     ): String {
-        logger.info("Processing fake RAG request from user: {}", fromUserId)
+        logger.info("Processing fake RAG request from user: {} in thread: {}", fromUserId, threadId)
 
-        // Simulate processing stages with events and delays
+        // Simulate processing stages with events and minimal delays for testing
         onEvent("Analyzing your question...")
-        delay(600)
+        delay(10)
 
         onEvent("Searching knowledge base...")
-        delay(950)
+        delay(10)
 
         onEvent("Retrieving relevant documents...")
-        delay(1400)
+        delay(10)
 
         onEvent("Generating response...")
-        delay(2000)
+        delay(10)
 
         // Generate response based on message content (moved from JesseService)
         val response = when {

@@ -90,14 +90,19 @@ class ThreadService(
         ownerId: String,
         displayName: String
     ): ThreadTimeline = withContext(Dispatchers.IO) {
+        // Generate threadId upfront so we can pass it to the RAG adapter
+        val threadId = UUIDv7.generateString()
         val prompt = WELCOME_PROMPT_TEMPLATE.format(displayName)
         val welcomeMessage = ragAdapter.sendMessage(
+            threadId = threadId,
             message = prompt,
-            fromUserId = ownerId,  // Use the new user's ID for the chat session
-            onEvent = { } // No status updates needed for welcome message
+            fromUserId = ownerId,
+            priorMessages = emptyList(),  // No prior context for welcome thread
+            onEvent = { }  // No status updates needed for welcome message
         )
 
-        createThread(
+        threadRepository.createWithMessage(
+            threadId = threadId,
             ownerId = ownerId,
             title = "Welcome",
             message = welcomeMessage,

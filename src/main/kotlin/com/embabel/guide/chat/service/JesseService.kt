@@ -83,9 +83,21 @@ class JesseService(
                     authorId = guideUserId
                 )
 
+                // Load existing thread messages for context
+                val timeline = threadService.findByThreadId(threadId).orElse(null)
+                val priorMessages = timeline?.messages
+                    ?.dropLast(1)  // Exclude the message we just added
+                    ?.map { PriorMessage(it.message.role, it.current.text) }
+                    ?: emptyList()
+
                 // Send status updates to the user while processing
                 // Use WebUser ID for WebSocket delivery (that's the principal in the session)
-                val response = ragAdapter.sendMessage(message, guideUserId) { event ->
+                val response = ragAdapter.sendMessage(
+                    threadId = threadId,
+                    message = message,
+                    fromUserId = guideUserId,
+                    priorMessages = priorMessages
+                ) { event ->
                     logger.debug("RAG event for user {}: {}", fromWebUserId, event)
                     sendStatusToUser(fromWebUserId, event)
                 }

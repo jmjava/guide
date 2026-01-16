@@ -19,6 +19,8 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * This adapter bridges the WebSocket chat system with the Guide's RAG-powered chatbot,
  * enabling real-time AI responses through the web interface.
+ *
+ * Sessions are cached per thread to maintain separate conversation contexts.
  */
 @Service
 @ConditionalOnProperty(
@@ -33,8 +35,8 @@ class GuideRagServiceAdapter(
 
     private val logger = LoggerFactory.getLogger(GuideRagServiceAdapter::class.java)
 
-    // Session cache to maintain conversation continuity per user
-    private val userSessions = ConcurrentHashMap<String, SessionContext>()
+    // Session cache to maintain conversation continuity per thread
+    private val threadSessions = ConcurrentHashMap<String, SessionContext>()
 
     companion object {
         private const val RESPONSE_TIMEOUT_MS = 120000 // 2 minutes
@@ -65,11 +67,13 @@ class GuideRagServiceAdapter(
     }
 
     override suspend fun sendMessage(
+        threadId: String,
         message: String,
         fromUserId: String,
+        priorMessages: List<PriorMessage>,
         onEvent: (String) -> Unit
     ): String = withContext(Dispatchers.IO) {
-        logger.info("Processing Guide RAG request from user: {}", fromUserId)
+        logger.info("Processing Guide RAG request from user: {} in thread: {}", fromUserId, threadId)
 
         val responseBuilder = StringBuilder()
         var isComplete = false
@@ -81,14 +85,27 @@ class GuideRagServiceAdapter(
             val guideUser = guideUserRepository.findById(fromUserId)
                 .orElseThrow { RuntimeException("No user found with id: $fromUserId") }
 
-            // Get or create session context for this user to maintain conversation continuity
-            val sessionContext = userSessions.computeIfAbsent(fromUserId) {
-                logger.info("Creating new chat session for user: {}", fromUserId)
+            // Get or create session context for this thread to maintain conversation continuity
+            var isNewSession = false
+            val sessionContext = threadSessions.computeIfAbsent(threadId) {
+                logger.info("Creating new chat session for thread: {} (user: {})", threadId, fromUserId)
+                isNewSession = true
                 val dynamicChannel = DynamicOutputChannel()
-                // Set the delegate before creating the session to avoid initialization errors
                 dynamicChannel.currentDelegate = messageOutputChannel
                 val session = chatbot.createSession(guideUser, dynamicChannel, null)
                 SessionContext(session, dynamicChannel)
+            }
+
+            // Load prior messages into the conversation if this is a new session
+            // Messages are added directly to the conversation without being processed by AI
+            if (isNewSession && priorMessages.isNotEmpty()) {
+                logger.info("Loading {} prior messages into conversation for thread: {}", priorMessages.size, threadId)
+                for (prior in priorMessages) {
+                    when (prior.role) {
+                        "user" -> sessionContext.session.conversation.addMessage(UserMessage(prior.content))
+                        "assistant" -> sessionContext.session.conversation.addMessage(AssistantMessage(prior.content))
+                    }
+                }
             }
 
             // Update the dynamic channel to point to this message's output channel
@@ -102,7 +119,7 @@ class GuideRagServiceAdapter(
 
             responseBuilder.toString().ifBlank { DEFAULT_ERROR_MESSAGE }
         } catch (e: Exception) {
-            logger.error("Error processing message from user {}: {}", fromUserId, e.message, e)
+            logger.error("Error processing message from user {} in thread {}: {}", fromUserId, threadId, e.message, e)
             throw e
         }
     }

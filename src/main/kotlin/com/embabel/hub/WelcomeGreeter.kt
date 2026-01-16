@@ -1,0 +1,49 @@
+package com.embabel.hub
+
+import com.embabel.guide.chat.model.DeliveredMessage
+import com.embabel.guide.chat.service.ChatService
+import com.embabel.guide.chat.service.ThreadService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import org.springframework.stereotype.Component
+
+/**
+ * Interface for greeting new users with a welcome message.
+ */
+interface WelcomeGreeter {
+    /**
+     * Greet a new user by creating a welcome thread and sending the message.
+     * This is a fire-and-forget operation that runs asynchronously.
+     *
+     * @param guideUserId the GuideUser's core ID (owner of the thread)
+     * @param webUserId the WebUser's ID (for WebSocket delivery)
+     * @param displayName the user's display name for personalized greeting
+     */
+    fun greetNewUser(guideUserId: String, webUserId: String, displayName: String)
+}
+
+/**
+ * Production implementation that creates AI-generated welcome threads.
+ */
+@Component
+class WelcomeGreeterImpl(
+    private val threadService: ThreadService,
+    private val chatService: ChatService
+) : WelcomeGreeter {
+
+    override fun greetNewUser(guideUserId: String, webUserId: String, displayName: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val timeline = threadService.createWelcomeThread(
+                ownerId = guideUserId,
+                displayName = displayName
+            )
+            // Send the welcome message to the user via WebSocket
+            val welcomeMessage = timeline.messages.firstOrNull()
+            if (welcomeMessage != null) {
+                val delivered = DeliveredMessage.createFrom(welcomeMessage, timeline.thread.threadId)
+                chatService.sendToUser(webUserId, delivered)
+            }
+        }
+    }
+}

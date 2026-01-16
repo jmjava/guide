@@ -15,6 +15,11 @@ test:
 
 OPENAI_API_KEY: test-fake-key
 
+# Use fake RAG adapter in tests (avoids 2-minute timeout waiting for real chatbot)
+rag:
+  adapter:
+    type: fake
+
 # Drivine datasource configuration for tests
 database:
   datasources:

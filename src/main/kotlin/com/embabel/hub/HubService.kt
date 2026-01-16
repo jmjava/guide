@@ -1,15 +1,9 @@
 package com.embabel.hub
 
-import com.embabel.guide.chat.model.DeliveredMessage
-import com.embabel.guide.chat.service.ChatService
-import com.embabel.guide.chat.service.ThreadService
 import com.embabel.guide.domain.GuideUser
 import com.embabel.guide.domain.GuideUserService
 import com.embabel.guide.domain.WebUserData
 import com.embabel.guide.util.UUIDv7
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 
@@ -17,8 +11,7 @@ import org.springframework.stereotype.Service
 class HubService(
     private val guideUserService: GuideUserService,
     private val jwtTokenService: JwtTokenService,
-    private val threadService: ThreadService,
-    private val chatService: ChatService
+    private val welcomeGreeter: WelcomeGreeter
 ) {
 
     private val passwordEncoder = BCryptPasswordEncoder()
@@ -74,21 +67,12 @@ class HubService(
         // Save the user through GuideUserService
         val guideUser = guideUserService.saveFromWebUser(webUser)
 
-        // Create a welcome thread for the new user with AI-generated greeting (fire-and-forget)
-        // After creation, send the welcome message to the user via WebSocket
-        CoroutineScope(Dispatchers.IO).launch {
-            val timeline = threadService.createWelcomeThread(
-                ownerId = guideUser.core.id,
-                displayName = request.userDisplayName
-            )
-            // Send the welcome message to the user via WebSocket
-            // Use WebUser ID (userId) as that's the principal in the JWT/WebSocket session
-            val welcomeMessage = timeline.messages.firstOrNull()
-            if (welcomeMessage != null) {
-                val delivered = DeliveredMessage.createFrom(welcomeMessage, timeline.thread.threadId)
-                chatService.sendToUser(userId, delivered)
-            }
-        }
+        // Greet the new user with a welcome message (fire-and-forget)
+        welcomeGreeter.greetNewUser(
+            guideUserId = guideUser.core.id,
+            webUserId = userId,
+            displayName = request.userDisplayName
+        )
 
         return guideUser
     }

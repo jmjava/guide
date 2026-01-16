@@ -20,6 +20,7 @@ import com.embabel.common.ai.model.EmbeddingService
 import com.embabel.common.ai.model.SpringEmbeddingService
 import com.embabel.common.ai.model.Llm
 import com.embabel.common.ai.model.PricingModel
+import com.embabel.hub.WelcomeGreeter
 import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.model.ChatResponse
@@ -62,6 +63,20 @@ class GuideTestConfig {
             model = FakeEmbeddingModel(),
             provider = "test",
         )
+    }
+
+    /**
+     * No-op WelcomeGreeter for tests to avoid fire-and-forget coroutines
+     * that can interfere with transactional test rollback.
+     */
+    @Bean
+    @org.springframework.context.annotation.Primary
+    fun testWelcomeGreeter(): WelcomeGreeter {
+        return object : WelcomeGreeter {
+            override fun greetNewUser(guideUserId: String, webUserId: String, displayName: String) {
+                // No-op for tests
+            }
+        }
     }
 }
 
