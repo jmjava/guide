@@ -9,7 +9,7 @@ import org.drivine.annotation.Root
 /**
  * Thread timeline with messages.
  * Each message includes its current version text and author.
- * Messages are sorted by messageId (UUIDv7 = chronological order).
+ * Messages are sorted by messageId (UUIDv7 = chronological order) via DSL deep sorting.
  */
 @GraphView
 data class ThreadTimeline(
@@ -19,12 +19,9 @@ data class ThreadTimeline(
     val owner: GuideUser,
 
     @GraphRelationship(type = "HAS_MESSAGE", direction = Direction.OUTGOING)
-    private val _messages: List<MessageWithVersion>
+    val messages: List<MessageWithVersion> = emptyList()
 ) {
-    /** Messages sorted by messageId (UUIDv7 = chronological order). Sorted once on first access. */
-    val messages: List<MessageWithVersion> by lazy { _messages.sortedBy { it.message.messageId } }
-
     /** Returns a copy of this timeline with an additional message. */
     fun withMessage(message: MessageWithVersion): ThreadTimeline =
-        copy(_messages = _messages + message)
+        copy(messages = messages + message)
 }

@@ -16,6 +16,9 @@
 package com.embabel.guide.chat.repository
 
 import com.embabel.guide.Neo4jPropertiesInitializer
+import com.embabel.guide.chat.model.MessageData
+import com.embabel.guide.chat.model.MessageVersionData
+import com.embabel.guide.chat.model.MessageWithVersion
 import com.embabel.guide.chat.service.ThreadService
 import com.embabel.guide.domain.GuideUserData
 import com.embabel.guide.domain.GuideUserRepository
@@ -325,6 +328,129 @@ class ThreadRepositoryImplTest {
                 role = ThreadService.ROLE_USER,
                 authorId = null
             )
+        }
+    }
+
+    @Test
+    fun `test addMessage adds message to existing thread`() {
+        // Given: A thread with one message
+        val threadId = UUIDv7.generateString()
+        val created = threadRepository.createWithMessage(
+            threadId = threadId,
+            ownerId = testUser.core.id,
+            title = "Add Message Test",
+            message = "Initial message",
+            role = ThreadService.ROLE_ASSISTANT,
+            authorId = null
+        )
+        assertEquals(1, created.messages.size)
+
+        // When: We add a reply message
+        val replyMessage = MessageWithVersion(
+            message = MessageData(
+                messageId = UUIDv7.generateString(),
+                threadId = threadId,
+                role = ThreadService.ROLE_USER,
+                createdAt = java.time.Instant.now()
+            ),
+            current = MessageVersionData(
+                versionId = UUIDv7.generateString(),
+                createdAt = java.time.Instant.now(),
+                editorRole = ThreadService.ROLE_USER,
+                reason = null,
+                text = "This is my reply"
+            ),
+            authoredBy = testUser
+        )
+        val updated = threadRepository.addMessage(threadId, replyMessage)
+
+        // Then: The thread now has two messages
+        assertEquals(2, updated.messages.size)
+        assertEquals("Initial message", updated.messages[0].current.text)
+        assertEquals("This is my reply", updated.messages[1].current.text)
+        assertEquals(testUser.core.id, updated.messages[1].authoredBy?.core?.id)
+    }
+
+    @Test
+    fun `test addMessage maintains chronological order`() {
+        // Given: A thread with one message
+        val threadId = UUIDv7.generateString()
+        threadRepository.createWithMessage(
+            threadId = threadId,
+            ownerId = testUser.core.id,
+            title = "Ordering Test",
+            message = "First message",
+            role = ThreadService.ROLE_USER,
+            authorId = testUser.core.id
+        )
+
+        // When: We add multiple messages in sequence
+        val msg2 = MessageWithVersion(
+            message = MessageData(
+                messageId = UUIDv7.generateString(),
+                threadId = threadId,
+                role = ThreadService.ROLE_ASSISTANT,
+                createdAt = java.time.Instant.now()
+            ),
+            current = MessageVersionData(
+                versionId = UUIDv7.generateString(),
+                createdAt = java.time.Instant.now(),
+                editorRole = ThreadService.ROLE_ASSISTANT,
+                reason = null,
+                text = "Second message"
+            ),
+            authoredBy = null
+        )
+        threadRepository.addMessage(threadId, msg2)
+
+        val msg3 = MessageWithVersion(
+            message = MessageData(
+                messageId = UUIDv7.generateString(),
+                threadId = threadId,
+                role = ThreadService.ROLE_USER,
+                createdAt = java.time.Instant.now()
+            ),
+            current = MessageVersionData(
+                versionId = UUIDv7.generateString(),
+                createdAt = java.time.Instant.now(),
+                editorRole = ThreadService.ROLE_USER,
+                reason = null,
+                text = "Third message"
+            ),
+            authoredBy = testUser
+        )
+        val finalTimeline = threadRepository.addMessage(threadId, msg3)
+
+        // Then: Messages are in chronological order (by messageId which is UUIDv7)
+        assertEquals(3, finalTimeline.messages.size)
+        assertEquals("First message", finalTimeline.messages[0].current.text)
+        assertEquals("Second message", finalTimeline.messages[1].current.text)
+        assertEquals("Third message", finalTimeline.messages[2].current.text)
+    }
+
+    @Test
+    fun `test addMessage throws when thread not found`() {
+        // Given: A message for a non-existent thread
+        val message = MessageWithVersion(
+            message = MessageData(
+                messageId = UUIDv7.generateString(),
+                threadId = "nonexistent-thread",
+                role = ThreadService.ROLE_USER,
+                createdAt = java.time.Instant.now()
+            ),
+            current = MessageVersionData(
+                versionId = UUIDv7.generateString(),
+                createdAt = java.time.Instant.now(),
+                editorRole = ThreadService.ROLE_USER,
+                reason = null,
+                text = "Should fail"
+            ),
+            authoredBy = testUser
+        )
+
+        // When/Then: Adding message to non-existent thread throws
+        assertThrows(IllegalArgumentException::class.java) {
+            threadRepository.addMessage("nonexistent-thread", message)
         }
     }
 }

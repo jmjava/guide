@@ -4,6 +4,7 @@ import com.embabel.guide.chat.model.DeliveredMessage
 import com.embabel.guide.chat.service.ThreadService
 import com.embabel.guide.domain.GuideUser
 import com.embabel.guide.domain.GuideUserService
+import kotlinx.coroutines.runBlocking
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -60,6 +61,27 @@ class HubApiController(
     }
 
     data class ThreadSummary(val id: String, val title: String?)
+    data class CreateThreadRequest(val content: String)
+    data class CreateThreadResponse(val threadId: String, val title: String?)
+
+    @PostMapping("/threads")
+    fun createThread(
+        @RequestBody request: CreateThreadRequest,
+        authentication: Authentication?
+    ): CreateThreadResponse {
+        val webUserId = authentication?.principal as? String
+            ?: throw UnauthorizedException()
+        val guideUser = guideUserService.findByWebUserId(webUserId)
+            .orElseThrow { UnauthorizedException() }
+
+        val timeline = runBlocking {
+            threadService.createThreadFromContent(
+                ownerId = guideUser.core.id,
+                content = request.content
+            )
+        }
+        return CreateThreadResponse(timeline.thread.threadId, timeline.thread.title)
+    }
 
     @GetMapping("/threads")
     fun listThreads(authentication: Authentication?): List<ThreadSummary> {
@@ -67,7 +89,7 @@ class HubApiController(
             ?: throw UnauthorizedException()
         val guideUser = guideUserService.findByWebUserId(webUserId)
             .orElseThrow { UnauthorizedException() }
-        return threadService.findByOwnerId(guideUser.core.id)
+        return threadService.findByOwnerIdByRecentActivity(guideUser.core.id)
             .map { ThreadSummary(it.thread.threadId, it.thread.title) }
     }
 

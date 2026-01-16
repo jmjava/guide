@@ -8,6 +8,11 @@ package com.embabel.guide.chat.service
  */
 interface RagServiceAdapter {
 
+    companion object {
+        const val TITLE_PROMPT = "Generate a short title (max 6 words) for this message. " +
+            "Reply with ONLY the title, no quotes or punctuation: "
+    }
+
     /**
      * Sends a message to the RAG system and returns the response.
      *
@@ -25,4 +30,16 @@ interface RagServiceAdapter {
         fromUserId: String,
         onEvent: (String) -> Unit = {}
     ): String
+
+    /**
+     * Generates a short title from message content.
+     *
+     * @param content The message content to generate a title from
+     * @param fromUserId The ID of the user (for session context)
+     * @return A short title (typically 3-6 words)
+     */
+    suspend fun generateTitle(content: String, fromUserId: String): String {
+        val response = sendMessage(TITLE_PROMPT + content, fromUserId)
+        return response.trim().take(100)  // Safety limit
+    }
 }

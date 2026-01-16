@@ -74,4 +74,15 @@ class FakeRagServiceAdapter : RagServiceAdapter {
         logger.debug("Fake RAG response generated for user: {}", fromUserId)
         return response
     }
+
+    override suspend fun generateTitle(content: String, fromUserId: String): String {
+        logger.debug("Generating fake title for content from user: {}", fromUserId)
+        // Return first few words of content as title, or a default
+        val words = content.trim().split("\\s+".toRegex())
+        return if (words.size <= 4) {
+            content.take(50)
+        } else {
+            words.take(4).joinToString(" ") + "..."
+        }
+    }
 }

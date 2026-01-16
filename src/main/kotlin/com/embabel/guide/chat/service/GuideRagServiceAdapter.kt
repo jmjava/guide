@@ -155,4 +155,33 @@ class GuideRagServiceAdapter(
             waited += POLL_INTERVAL_MS.toInt()
         }
     }
+
+    /**
+     * Generates a short title from message content using a one-shot call.
+     * This does NOT use the user's session to avoid polluting conversation history.
+     */
+    override suspend fun generateTitle(content: String, fromUserId: String): String = withContext(Dispatchers.IO) {
+        logger.debug("Generating title for content from user: {}", fromUserId)
+
+        val responseBuilder = StringBuilder()
+        var isComplete = false
+
+        val outputChannel = createOutputChannel(responseBuilder, {}) { isComplete = true }
+
+        try {
+            val guideUser = guideUserRepository.findById(fromUserId)
+                .orElseThrow { RuntimeException("No user found with id: $fromUserId") }
+
+            // Create a one-shot session (not cached) for title generation
+            val session = chatbot.createSession(guideUser, outputChannel, null)
+            session.onUserMessage(UserMessage(RagServiceAdapter.TITLE_PROMPT + content))
+
+            waitForResponse { isComplete }
+
+            responseBuilder.toString().trim().take(100).ifBlank { "New conversation" }
+        } catch (e: Exception) {
+            logger.error("Error generating title for user {}: {}", fromUserId, e.message, e)
+            "New conversation"  // Fallback title on error
+        }
+    }
 }

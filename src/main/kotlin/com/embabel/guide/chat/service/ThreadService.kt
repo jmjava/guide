@@ -41,6 +41,15 @@ class ThreadService(
     }
 
     /**
+     * Find all threads owned by a user, sorted by most recent activity.
+     * Threads with the most recent messages appear first.
+     */
+    fun findByOwnerIdByRecentActivity(ownerId: String): List<ThreadTimeline> {
+        return threadRepository.findByOwnerId(ownerId)
+            .sortedByDescending { it.messages.lastOrNull()?.message?.messageId ?: "" }
+    }
+
+    /**
      * Create a new thread with an initial message.
      *
      * @param ownerId the user who owns the thread
@@ -110,6 +119,28 @@ class ThreadService(
             message = welcomeMessage,
             role = ROLE_ASSISTANT,
             authorId = null
+        )
+    }
+
+    /**
+     * Create a new thread from user message content.
+     * Generates a title from the content using AI.
+     *
+     * @param ownerId the user who owns the thread
+     * @param content the initial message content
+     * @return the created thread timeline
+     */
+    suspend fun createThreadFromContent(
+        ownerId: String,
+        content: String
+    ): ThreadTimeline = withContext(Dispatchers.IO) {
+        val title = ragAdapter.generateTitle(content, ownerId)
+        createThread(
+            ownerId = ownerId,
+            title = title,
+            message = content,
+            role = ROLE_USER,
+            authorId = ownerId
         )
     }
 

@@ -731,4 +731,141 @@ class HubApiControllerTest {
         mockMvc.perform(get("/api/hub/threads/some-thread-id"))
             .andExpect(status().isForbidden)
     }
+
+    // ========== Create Thread Tests ==========
+
+    @Test
+    fun `POST threads should create thread with generated title`() {
+        // Given - Register a user
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "Create Thread User",
+            username = "test_createthread",
+            userEmail = "test_createthread@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        val registerResult = mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        ).andReturn()
+
+        val createdUser = objectMapper.readValue(registerResult.response.contentAsString, GuideUser::class.java)
+        val token = createdUser.webUser?.refreshToken ?: fail("Expected refresh token")
+
+        // When - Create a new thread
+        val createRequest = mapOf("content" to "How do I configure the database connection settings?")
+
+        mockMvc.perform(
+            post("/api/hub/threads")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.threadId").exists())
+            .andExpect(jsonPath("$.title").exists())
+    }
+
+    @Test
+    fun `POST threads should persist thread with user message`() {
+        // Given - Register a user
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "Persist Thread User",
+            username = "test_persistthread",
+            userEmail = "test_persistthread@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        val registerResult = mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        ).andReturn()
+
+        val createdUser = objectMapper.readValue(registerResult.response.contentAsString, GuideUser::class.java)
+        val token = createdUser.webUser?.refreshToken ?: fail("Expected refresh token")
+
+        // When - Create a new thread
+        val messageContent = "What are the best practices for error handling?"
+        val createRequest = mapOf("content" to messageContent)
+
+        val createResult = mockMvc.perform(
+            post("/api/hub/threads")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createRequest))
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+
+        // Then - Verify thread was persisted with the message
+        val response = objectMapper.readTree(createResult.response.contentAsString)
+        val threadId = response.get("threadId").asText()
+
+        mockMvc.perform(
+            get("/api/hub/threads/$threadId")
+                .header("Authorization", "Bearer $token")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[0].body").value(messageContent))
+            .andExpect(jsonPath("$[0].role").value("user"))
+    }
+
+    @Test
+    fun `POST threads should return 403 when not authenticated`() {
+        // Given
+        val createRequest = mapOf("content" to "Some message content")
+
+        // When & Then - Note: Non-authenticated requests don't start async
+        mockMvc.perform(
+            post("/api/hub/threads")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createRequest))
+        )
+            .andExpect(status().isForbidden)
+    }
+
+    @Test
+    fun `POST threads should appear in thread list`() {
+        // Given - Register a user
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "List Thread User",
+            username = "test_listthread",
+            userEmail = "test_listthread@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        val registerResult = mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        ).andReturn()
+
+        val createdUser = objectMapper.readValue(registerResult.response.contentAsString, GuideUser::class.java)
+        val token = createdUser.webUser?.refreshToken ?: fail("Expected refresh token")
+
+        // When - Create a new thread
+        val createRequest = mapOf("content" to "Tell me about machine learning algorithms")
+
+        val createResult = mockMvc.perform(
+            post("/api/hub/threads")
+                .header("Authorization", "Bearer $token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createRequest))
+        )
+            .andExpect(status().isOk)
+            .andReturn()
+
+        val response = objectMapper.readTree(createResult.response.contentAsString)
+        val threadId = response.get("threadId").asText()
+
+        // Then - Thread should appear in list
+        mockMvc.perform(
+            get("/api/hub/threads")
+                .header("Authorization", "Bearer $token")
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$[?(@.id == '$threadId')]").exists())
+    }
 }

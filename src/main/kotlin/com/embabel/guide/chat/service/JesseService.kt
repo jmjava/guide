@@ -3,6 +3,7 @@ package com.embabel.guide.chat.service
 import com.embabel.guide.chat.model.DeliveredMessage
 import com.embabel.guide.chat.model.MessageWithVersion
 import com.embabel.guide.chat.model.StatusMessage
+import com.embabel.guide.domain.GuideUserService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,7 +18,8 @@ class JesseService(
     private val chatService: ChatService,
     private val presenceService: PresenceService,
     private val ragAdapter: RagServiceAdapter,
-    private val threadService: ThreadService
+    private val threadService: ThreadService,
+    private val guideUserService: GuideUserService
 ) {
     private val logger = LoggerFactory.getLogger(JesseService::class.java)
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
@@ -59,26 +61,33 @@ class JesseService(
      * Receive a message from a user, persist it, get AI response, and send back.
      *
      * @param threadId the thread to add messages to
-     * @param fromUserId the user sending the message (GuideUser ID)
+     * @param fromWebUserId the WebUser ID from the JWT principal
      * @param message the message text
      */
-    fun receiveMessage(threadId: String, fromUserId: String, message: String) {
-        logger.info("Jesse received message from user {} in thread {}", fromUserId, threadId)
+    fun receiveMessage(threadId: String, fromWebUserId: String, message: String) {
+        logger.info("Jesse received message from webUser {} in thread {}", fromWebUserId, threadId)
 
         coroutineScope.launch {
             try {
+                // Look up the GuideUser by WebUser ID
+                val guideUser = guideUserService.findByWebUserId(fromWebUserId).orElseThrow {
+                    IllegalArgumentException("User not found for webUserId: $fromWebUserId")
+                }
+                val guideUserId = guideUser.core.id
+
                 // Save the user's message to the thread
                 threadService.addMessage(
                     threadId = threadId,
                     text = message,
                     role = ThreadService.ROLE_USER,
-                    authorId = fromUserId
+                    authorId = guideUserId
                 )
 
                 // Send status updates to the user while processing
-                val response = ragAdapter.sendMessage(message, fromUserId) { event ->
-                    logger.debug("RAG event for user {}: {}", fromUserId, event)
-                    sendStatusToUser(fromUserId, event)
+                // Use WebUser ID for WebSocket delivery (that's the principal in the session)
+                val response = ragAdapter.sendMessage(message, guideUserId) { event ->
+                    logger.debug("RAG event for user {}: {}", fromWebUserId, event)
+                    sendStatusToUser(fromWebUserId, event)
                 }
 
                 // Save the assistant's response to the thread
@@ -89,11 +98,11 @@ class JesseService(
                     authorId = null  // System-generated response
                 )
 
-                // Send the response to the user via WebSocket
-                sendMessageToUser(fromUserId, assistantMessage, threadId)
+                // Send the response to the user via WebSocket (use WebUser ID)
+                sendMessageToUser(fromWebUserId, assistantMessage, threadId)
             } catch (e: Exception) {
-                logger.error("Error processing message from user {}: {}", fromUserId, e.message, e)
-                sendStatusToUser(fromUserId, "Error processing your request")
+                logger.error("Error processing message from webUser {}: {}", fromWebUserId, e.message, e)
+                sendStatusToUser(fromWebUserId, "Error processing your request")
 
                 // Save error message to thread and send to user
                 val errorMessage = threadService.addMessage(
@@ -102,7 +111,7 @@ class JesseService(
                     role = ThreadService.ROLE_ASSISTANT,
                     authorId = null
                 )
-                sendMessageToUser(fromUserId, errorMessage, threadId)
+                sendMessageToUser(fromWebUserId, errorMessage, threadId)
             }
         }
     }

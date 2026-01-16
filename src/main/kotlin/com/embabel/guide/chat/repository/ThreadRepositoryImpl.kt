@@ -22,6 +22,9 @@ class ThreadRepositoryImpl(
             where {
                 thread.threadId eq threadId
             }
+            orderBy {
+                messages.message.messageId.asc()
+            }
         }
         return Optional.ofNullable(results.firstOrNull())
     }
@@ -31,6 +34,9 @@ class ThreadRepositoryImpl(
         return graphObjectManager.loadAll<ThreadTimeline> {
             where {
                 owner.core.id eq ownerId
+            }
+            orderBy {
+                messages.message.messageId.asc()
             }
         }
     }
@@ -68,7 +74,7 @@ class ThreadRepositoryImpl(
                 createdAt = now
             ),
             owner = owner,
-            _messages = listOf(
+            messages = listOf(
                 MessageWithVersion(
                     message = MessageData(
                         messageId = messageId,
