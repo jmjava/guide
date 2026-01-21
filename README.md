@@ -527,7 +527,7 @@ Leave `USE_LOCAL_NEO4J` unset (the default). GitHub Actions uses Testcontainers 
 ./mvnw test
 ```
 
-All 77 tests should pass, including:
+All tests should pass, including:
 
 - Hub API controller tests
 - User service tests
