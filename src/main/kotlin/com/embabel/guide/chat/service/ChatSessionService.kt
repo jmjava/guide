@@ -1,8 +1,10 @@
 package com.embabel.guide.chat.service
 
-import com.embabel.guide.chat.model.*
-import com.embabel.guide.chat.repository.ChatSessionRepository
-import com.embabel.guide.domain.GuideUserService
+import com.embabel.chat.store.model.MessageData
+import com.embabel.chat.store.model.StoredMessage
+import com.embabel.chat.store.model.StoredSession
+import com.embabel.chat.store.repository.ChatSessionRepository
+import com.embabel.guide.domain.GuideUserRepository
 import com.embabel.guide.util.UUIDv7
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,7 +16,7 @@ import java.util.Optional
 class ChatSessionService(
     private val chatSessionRepository: ChatSessionRepository,
     private val ragAdapter: RagServiceAdapter,
-    private val guideUserService: GuideUserService
+    private val guideUserRepository: GuideUserRepository
 ) {
 
     companion object {
@@ -29,24 +31,24 @@ class ChatSessionService(
     /**
      * Find a session by its ID.
      */
-    fun findBySessionId(sessionId: String): Optional<ChatSession> {
+    fun findBySessionId(sessionId: String): Optional<StoredSession> {
         return chatSessionRepository.findBySessionId(sessionId)
     }
 
     /**
      * Find all sessions owned by a user.
      */
-    fun findByOwnerId(ownerId: String): List<ChatSession> {
-        return chatSessionRepository.findByOwnerId(ownerId)
+    fun findByOwnerId(ownerId: String): List<StoredSession> {
+        return chatSessionRepository.listSessionsForUser(ownerId)
     }
 
     /**
      * Find all sessions owned by a user, sorted by most recent activity.
      * Sessions with the most recent messages appear first.
      */
-    fun findByOwnerIdByRecentActivity(ownerId: String): List<ChatSession> {
-        return chatSessionRepository.findByOwnerId(ownerId)
-            .sortedByDescending { it.messages.lastOrNull()?.message?.messageId ?: "" }
+    fun findByOwnerIdByRecentActivity(ownerId: String): List<StoredSession> {
+        return chatSessionRepository.listSessionsForUser(ownerId)
+            .sortedByDescending { it.messages.lastOrNull()?.messageId ?: "" }
     }
 
     /**
@@ -64,15 +66,30 @@ class ChatSessionService(
         message: String,
         role: String,
         authorId: String? = null
-    ): ChatSession {
+    ): StoredSession {
         val sessionId = UUIDv7.generateString()
-        return chatSessionRepository.createWithMessage(
-            sessionId = sessionId,
-            ownerId = ownerId,
-            title = title,
-            message = message,
+        val owner = guideUserRepository.findById(ownerId).orElseThrow {
+            IllegalArgumentException("Owner not found: $ownerId")
+        }
+
+        val messageData = MessageData(
+            messageId = UUIDv7.generateString(),
             role = role,
-            authorId = authorId
+            content = message,
+            createdAt = Instant.now()
+        )
+
+        // Look up the author if provided
+        val messageAuthor = authorId?.let { id ->
+            guideUserRepository.findById(id).orElse(null)?.guideUserData()
+        }
+
+        return chatSessionRepository.createSessionWithMessage(
+            sessionId = sessionId,
+            owner = owner.guideUserData(),
+            title = title,
+            messageData = messageData,
+            messageAuthor = messageAuthor
         )
     }
 
@@ -89,7 +106,7 @@ class ChatSessionService(
     suspend fun createWelcomeSession(
         ownerId: String,
         displayName: String
-    ): ChatSession = withContext(Dispatchers.IO) {
+    ): StoredSession = withContext(Dispatchers.IO) {
         // Generate sessionId upfront so we can pass it to the RAG adapter
         val sessionId = UUIDv7.generateString()
         val prompt = WELCOME_PROMPT_TEMPLATE.format(displayName)
@@ -101,13 +118,23 @@ class ChatSessionService(
             onEvent = { }  // No status updates needed for welcome message
         )
 
-        chatSessionRepository.createWithMessage(
-            sessionId = sessionId,
-            ownerId = ownerId,
-            title = "Welcome",
-            message = welcomeMessage,
+        val owner = guideUserRepository.findById(ownerId).orElseThrow {
+            IllegalArgumentException("Owner not found: $ownerId")
+        }
+
+        val messageData = MessageData(
+            messageId = UUIDv7.generateString(),
             role = ROLE_ASSISTANT,
-            authorId = null  // System message - no author
+            content = welcomeMessage,
+            createdAt = Instant.now()
+        )
+
+        chatSessionRepository.createSessionWithMessage(
+            sessionId = sessionId,
+            owner = owner.guideUserData(),
+            title = "Welcome",
+            messageData = messageData,
+            messageAuthor = null  // System message - no author
         )
     }
 
@@ -117,7 +144,7 @@ class ChatSessionService(
     fun createWelcomeSessionWithMessage(
         ownerId: String,
         welcomeMessage: String = DEFAULT_WELCOME_MESSAGE
-    ): ChatSession {
+    ): StoredSession {
         return createSession(
             ownerId = ownerId,
             title = "Welcome",
@@ -138,7 +165,7 @@ class ChatSessionService(
     suspend fun createSessionFromContent(
         ownerId: String,
         content: String
-    ): ChatSession = withContext(Dispatchers.IO) {
+    ): StoredSession = withContext(Dispatchers.IO) {
         val title = ragAdapter.generateTitle(content, ownerId)
         createSession(
             ownerId = ownerId,
@@ -163,38 +190,21 @@ class ChatSessionService(
         text: String,
         role: String,
         authorId: String? = null
-    ): MessageWithVersion {
-        val now = Instant.now()
-
-        val author = if (authorId != null) {
-            guideUserService.findById(authorId).orElseThrow {
-                IllegalArgumentException("Author not found: $authorId")
-            }
-        } else {
-            null
-        }
-
-        val messageId = UUIDv7.generateString()
-        val versionId = UUIDv7.generateString()
-
-        val message = MessageWithVersion(
-            message = MessageData(
-                messageId = messageId,
-                sessionId = sessionId,
-                role = role,
-                createdAt = now
-            ),
-            current = MessageVersionData(
-                versionId = versionId,
-                createdAt = now,
-                editorRole = role,
-                reason = null,
-                text = text
-            ),
-            authoredBy = author
+    ): StoredMessage {
+        val messageData = MessageData(
+            messageId = UUIDv7.generateString(),
+            role = role,
+            content = text,
+            createdAt = Instant.now()
         )
 
-        chatSessionRepository.addMessage(sessionId, message)
-        return message
+        // Look up the author if provided
+        val author = authorId?.let { id ->
+            guideUserRepository.findById(id).orElse(null)?.guideUserData()
+        }
+
+        val updatedSession = chatSessionRepository.addMessage(sessionId, messageData, author)
+        // Return the last message (the one we just added)
+        return updatedSession.messages.last()
     }
 }

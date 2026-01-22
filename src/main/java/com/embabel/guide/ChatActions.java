@@ -54,12 +54,16 @@ public class ChatActions {
             case DiscordUser du -> {
                 return guideUserRepository.findByDiscordUserId(du.getId())
                         .orElseGet(() -> {
+                            var discordInfo = du.getDiscordUser();
+                            var displayName = discordInfo.getDisplayName() != null
+                                    ? discordInfo.getDisplayName()
+                                    : discordInfo.getUsername();
                             var guideUserData = new GuideUserData(
                                     java.util.UUID.randomUUID().toString(),
+                                    displayName != null ? displayName : "",
                                     null,
                                     null
                             );
-                            var discordInfo = du.getDiscordUser();
                             var discordUserInfo = new DiscordUserInfoData(
                                     discordInfo.getId(),
                                     discordInfo.getUsername(),

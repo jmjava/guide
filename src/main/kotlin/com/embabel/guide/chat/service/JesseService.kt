@@ -1,7 +1,7 @@
 package com.embabel.guide.chat.service
 
+import com.embabel.chat.store.model.StoredMessage
 import com.embabel.guide.chat.model.DeliveredMessage
-import com.embabel.guide.chat.model.MessageWithVersion
 import com.embabel.guide.chat.model.StatusMessage
 import com.embabel.guide.domain.GuideUserService
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +41,7 @@ class JesseService(
         presenceService.touch(JESSE_USER_ID, JESSE_SESSION_ID, "active")
     }
 
-    private fun sendMessageToUser(toUserId: String, message: MessageWithVersion, sessionId: String) {
+    private fun sendMessageToUser(toUserId: String, message: StoredMessage, sessionId: String) {
         logger.debug("Jesse sending message to user: {}", toUserId)
         val deliveredMessage = DeliveredMessage.createFrom(message, sessionId)
         chatService.sendToUser(toUserId, deliveredMessage)
@@ -95,7 +95,7 @@ class JesseService(
                 val chatSession = chatSessionService.findBySessionId(sessionId).orElse(null)
                 val priorMessages = chatSession?.messages
                     ?.dropLast(1)  // Exclude the message we just added
-                    ?.map { PriorMessage(it.message.role, it.current.text) }
+                    ?.map { PriorMessage(it.role, it.content) }
                     ?: emptyList()
                 logger.info("[session={}] Loaded {} prior messages for context", sessionId, priorMessages.size)
 

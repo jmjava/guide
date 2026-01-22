@@ -28,7 +28,10 @@ class GuideUserService(
                     return@orElseGet existing.get()
                 }
 
-                val guideUser = GuideUserData(UUID.randomUUID().toString(), null, null)
+                val guideUser = GuideUserData(
+                    id = UUID.randomUUID().toString(),
+                    displayName = "Friend"
+                )
                 val anonymousWebUser = AnonymousWebUserData(
                     UUID.randomUUID().toString(),
                     "Friend",
@@ -69,7 +72,10 @@ class GuideUserService(
      * @return the saved GuideUser
      */
     fun saveFromWebUser(webUser: WebUserData): GuideUser {
-        val guideUser = GuideUserData(UUID.randomUUID().toString(), null, null)
+        val guideUser = GuideUserData(
+            id = UUID.randomUUID().toString(),
+            displayName = webUser.displayName
+        )
         return guideUserRepository.createWithWebUser(guideUser, webUser)
     }
 

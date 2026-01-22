@@ -37,13 +37,12 @@ data class GuideUserWithDiscordUserInfo(
          */
         @JvmStatic
         fun fromDiscordUser(discordUser: DiscordUser): GuideUserWithDiscordUserInfo {
+            val du = discordUser.discordUser
             val guideUserData = GuideUserData(
                 id = UUID.randomUUID().toString(),
-                persona = null,
-                customPrompt = null
+                displayName = du.displayName ?: du.username ?: ""
             )
 
-            val du = discordUser.discordUser
             val discordData = DiscordUserInfoData(
                 id = du.id,
                 username = du.username,

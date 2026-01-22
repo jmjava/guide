@@ -36,6 +36,7 @@ class GuideUserMapper {
         requireNotNull(map) { "guideUserData map cannot be null" }
         return GuideUserData(
             id = map["id"] as String,
+            displayName = (map["displayName"] as? String) ?: "",
             persona = map["persona"] as? String,
             customPrompt = map["customPrompt"] as? String
         )

@@ -1,5 +1,6 @@
 package com.embabel.guide.chat.model
 
+import com.embabel.chat.store.model.StoredMessage
 import java.time.Instant
 
 /**
@@ -14,14 +15,14 @@ data class DeliveredMessage(
     val authorId: String? = null
 ) {
     companion object {
-        fun createFrom(msg: MessageWithVersion, sessionId: String): DeliveredMessage {
+        fun createFrom(msg: StoredMessage, sessionId: String): DeliveredMessage {
             return DeliveredMessage(
-                id = msg.message.messageId,
+                id = msg.messageId,
                 sessionId = sessionId,
-                role = msg.message.role,
-                body = msg.current.text,
-                ts = msg.message.createdAt ?: Instant.now(),
-                authorId = msg.authoredBy?.core?.id
+                role = msg.role,
+                body = msg.content,
+                ts = msg.createdAt,
+                authorId = msg.author?.id
             )
         }
     }

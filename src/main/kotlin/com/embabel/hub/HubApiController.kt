@@ -107,7 +107,7 @@ class HubApiController(
             .orElseThrow { NotFoundException("Session not found") }
 
         // Security check: only owner can view session
-        if (chatSession.owner.core.id != guideUser.core.id) {
+        if (chatSession.owner.id != guideUser.core.id) {
             throw ForbiddenException("Access denied")
         }
 

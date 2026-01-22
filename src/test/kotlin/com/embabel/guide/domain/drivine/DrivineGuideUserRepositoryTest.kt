@@ -52,9 +52,9 @@ class DrivineGuideUserRepositoryTest {
     fun `test create and find GuideUser with Discord info`() {
         // Given: We create GuideUser data with Discord info
         val guideUserData = GuideUserData(
-            UUID.randomUUID().toString(),
-            "adaptive",
-            null
+            id = UUID.randomUUID().toString(),
+            displayName = "Test User",
+            persona = "adaptive"
         )
 
         val discordInfo = DiscordUserInfoData(
@@ -87,9 +87,10 @@ class DrivineGuideUserRepositoryTest {
     fun `test create and find GuideUser with WebUser info`() {
         // Given: We create GuideUser data with WebUser info
         val guideUserData = GuideUserData(
-            UUID.randomUUID().toString(),
-            "adaptive",
-            "Answer questions about embabel"
+            id = UUID.randomUUID().toString(),
+            displayName = "Web Test User",
+            persona = "adaptive",
+            customPrompt = "Answer questions about embabel"
         )
 
         val webUserData = WebUserData(
@@ -122,9 +123,8 @@ class DrivineGuideUserRepositoryTest {
     fun `test find by web username`() {
         // Given: We create a GuideUser with a specific username
         val guideUserData = GuideUserData(
-            UUID.randomUUID().toString(),
-            null,
-            null
+            id = UUID.randomUUID().toString(),
+            displayName = "Username Test"
         )
 
         val webUserData = WebUserData(
@@ -151,9 +151,9 @@ class DrivineGuideUserRepositoryTest {
     fun `test update persona`() {
         // Given: We create a GuideUser
         val guideUserData = GuideUserData(
-            UUID.randomUUID().toString(),
-            "adaptive",
-            null
+            id = UUID.randomUUID().toString(),
+            displayName = "Persona Test",
+            persona = "adaptive"
         )
 
         val discordInfo = DiscordUserInfoData(
@@ -181,9 +181,8 @@ class DrivineGuideUserRepositoryTest {
     fun `test update custom prompt`() {
         // Given: We create a GuideUser
         val guideUserData = GuideUserData(
-            UUID.randomUUID().toString(),
-            null,
-            null
+            id = UUID.randomUUID().toString(),
+            displayName = "Prompt Test"
         )
 
         val webUserData = WebUserData(
@@ -229,9 +228,9 @@ class DrivineGuideUserRepositoryTest {
     fun `test composition returns flat data structures`() {
         // Given: We create a GuideUser with WebUser
         val guideUserData = GuideUserData(
-            UUID.randomUUID().toString(),
-            "jesse",
-            null
+            id = UUID.randomUUID().toString(),
+            displayName = "Flat Test",
+            persona = "jesse"
         )
 
         val webUserData = WebUserData(
