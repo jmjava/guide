@@ -33,21 +33,27 @@ jobs:
           mkdir -p /home/runner
           echo "testcontainers.reuse.enable=true" > /home/runner/.testcontainers.properties
 
+      - name: Configure Maven Settings
+        uses: s4u/maven-settings-action@v2.8.0
+        with:
+          servers: ${{secrets.EMBABEL_ARTIFACTORY}}
+
       # Compile first - fail fast on compilation errors
+      # -U forces update of SNAPSHOT dependencies
       - name: Compile
-        run: mvn -B compile test-compile
+        run: mvn -U -B compile test-compile
 
       # Run tests with JaCoCo coverage
       - name: Test with Coverage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_DUMMY_KEY }}
-        run: mvn -B test
+        run: mvn -U -B test
 
       # Generate JaCoCo coverage report
       - name: Generate Coverage Report
         if: always()
-        run: mvn -B jacoco:report
+        run: mvn -U -B jacoco:report
         continue-on-error: true
 
       # Publish test results as check run annotations
