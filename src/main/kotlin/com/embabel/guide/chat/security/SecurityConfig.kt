@@ -85,6 +85,7 @@ class SecurityConfig(
                     "/api/messages/user",
                     "/api/hub/register",
                     "/api/hub/login",
+                    "/api/hub/refresh",
                     "/api/v1/data/load-references"
                 ).permitAll()
                 it.requestMatchers(

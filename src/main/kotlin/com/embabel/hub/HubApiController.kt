@@ -4,7 +4,10 @@ import com.embabel.guide.chat.model.DeliveredMessage
 import com.embabel.guide.chat.service.ChatSessionService
 import com.embabel.guide.domain.GuideUser
 import com.embabel.guide.domain.GuideUserService
+import io.jsonwebtoken.JwtException
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
+import java.time.Instant
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -19,7 +22,8 @@ class HubApiController(
     private val hubService: HubService,
     private val personaService: PersonaService,
     private val guideUserService: GuideUserService,
-    private val chatSessionService: ChatSessionService
+    private val chatSessionService: ChatSessionService,
+    private val jwtTokenService: JwtTokenService
 ) {
 
     @PostMapping("/register")
@@ -30,6 +34,30 @@ class HubApiController(
     @PostMapping("/login")
     fun loginUser(@RequestBody request: UserLoginRequest): LoginResponse {
         return hubService.loginUser(request)
+    }
+
+    data class RefreshTokenRequest(val token: String)
+    data class RefreshTokenResponse(val token: String, val expiresAt: Instant)
+
+    @PostMapping("/refresh")
+    fun refreshToken(@RequestBody request: RefreshTokenRequest): ResponseEntity<RefreshTokenResponse> {
+        return try {
+            // Parse the token (even if expired) to get the user ID - signature must still be valid
+            val claims = jwtTokenService.parseTokenIgnoringExpiration(request.token)
+            val userId = claims.subject
+
+            // Verify the user still exists
+            guideUserService.findByWebUserId(userId)
+                .orElseThrow { UnauthorizedException("User not found") }
+
+            // Generate a new token
+            val newToken = jwtTokenService.generateRefreshToken(userId)
+            val expiresAt = Instant.now().plusSeconds(jwtTokenService.tokenExpirationSeconds)
+
+            ResponseEntity.ok(RefreshTokenResponse(newToken, expiresAt))
+        } catch (ex: JwtException) {
+            throw UnauthorizedException("Invalid token")
+        }
     }
 
     @GetMapping("/personas")

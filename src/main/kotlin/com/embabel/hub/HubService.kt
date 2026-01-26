@@ -106,8 +106,13 @@ class HubService(
             throw LoginException("Invalid username or password")
         }
 
+        // Generate a fresh token on login for accurate expiration
+        val token = jwtTokenService.generateRefreshToken(webUser.id)
+        val expiresAt = java.time.Instant.now().plusSeconds(jwtTokenService.tokenExpirationSeconds)
+
         return LoginResponse(
-            token = webUser.refreshToken ?: "",
+            token = token,
+            expiresAt = expiresAt,
             userId = webUser.id,
             username = webUser.userName,
             displayName = webUser.displayName,

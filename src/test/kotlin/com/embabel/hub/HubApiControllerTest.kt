@@ -734,4 +734,196 @@ class HubApiControllerTest {
             .andExpect(status().isForbidden)
     }
 
+    // ========== JWT Error Handling Tests ==========
+
+    @Test
+    fun `expired JWT returns 401 with TOKEN_EXPIRED code`() {
+        // Given - Create an expired token manually
+        val expiredToken = createExpiredToken("test-user-id")
+
+        // When & Then
+        mockMvc.perform(
+            get("/api/hub/sessions/some-session")
+                .header("Authorization", "Bearer $expiredToken")
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.code").value("TOKEN_EXPIRED"))
+            .andExpect(jsonPath("$.message").value("Your session has expired. Please sign in again."))
+            .andExpect(jsonPath("$.status").value(401))
+    }
+
+    @Test
+    fun `invalid JWT signature returns 401 with TOKEN_INVALID code`() {
+        // Given - A token with invalid signature
+        val invalidToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIifQ.invalid-signature"
+
+        // When & Then
+        mockMvc.perform(
+            get("/api/hub/sessions/some-session")
+                .header("Authorization", "Bearer $invalidToken")
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.code").value("TOKEN_INVALID"))
+            .andExpect(jsonPath("$.message").value("Your session is invalid. Please sign in again."))
+    }
+
+    @Test
+    fun `malformed JWT returns 401 with TOKEN_INVALID code`() {
+        // Given - A malformed token
+        val malformedToken = "not-a-valid-jwt"
+
+        // When & Then
+        mockMvc.perform(
+            get("/api/hub/sessions/some-session")
+                .header("Authorization", "Bearer $malformedToken")
+        )
+            .andExpect(status().isUnauthorized)
+            .andExpect(jsonPath("$.code").value("TOKEN_INVALID"))
+    }
+
+    // ========== Token Refresh Tests ==========
+
+    @Test
+    fun `POST refresh with valid token returns new token and expiresAt`() {
+        // Given - Register a user and get their token
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "Refresh Test User",
+            username = "test_refreshuser",
+            userEmail = "test_refreshuser@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        val registerResult = mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        ).andReturn()
+
+        val createdUser = objectMapper.readValue(registerResult.response.contentAsString, GuideUser::class.java)
+        val token = createdUser.webUser?.refreshToken ?: fail("Expected refresh token")
+
+        // When - Refresh the token
+        val refreshRequest = mapOf("token" to token)
+
+        mockMvc.perform(
+            post("/api/hub/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.token").exists())
+            .andExpect(jsonPath("$.expiresAt").exists())
+    }
+
+    @Test
+    fun `POST refresh with expired token still works (signature valid)`() {
+        // Given - Create an expired token for an existing user
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "Expired Refresh User",
+            username = "test_expiredrefresh",
+            userEmail = "test_expiredrefresh@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        val registerResult = mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        ).andReturn()
+
+        val createdUser = objectMapper.readValue(registerResult.response.contentAsString, GuideUser::class.java)
+        val userId = createdUser.webUser?.id ?: fail("Expected web user id")
+
+        // Create an expired token for this user
+        val expiredToken = createExpiredToken(userId)
+
+        // When - Refresh the expired token
+        val refreshRequest = mapOf("token" to expiredToken)
+
+        mockMvc.perform(
+            post("/api/hub/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.token").exists())
+            .andExpect(jsonPath("$.expiresAt").exists())
+    }
+
+    @Test
+    fun `POST refresh with invalid signature returns 401`() {
+        // Given - A token with invalid signature
+        val invalidToken = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0LXVzZXIifQ.invalid-signature"
+        val refreshRequest = mapOf("token" to invalidToken)
+
+        // When & Then
+        mockMvc.perform(
+            post("/api/hub/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(refreshRequest))
+        )
+            .andExpect(status().isUnauthorized)
+    }
+
+    // ========== Login Response Tests ==========
+
+    @Test
+    fun `POST login response includes expiresAt field`() {
+        // Given - Register a user
+        val registerRequest = UserRegistrationRequest(
+            userDisplayName = "ExpiresAt Test User",
+            username = "test_expiresat",
+            userEmail = "test_expiresat@example.com",
+            password = "SecurePassword123!",
+            passwordConfirmation = "SecurePassword123!"
+        )
+        mockMvc.perform(
+            post("/api/hub/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerRequest))
+        )
+
+        // When - Login
+        val loginRequest = UserLoginRequest(
+            username = "test_expiresat",
+            password = "SecurePassword123!"
+        )
+
+        mockMvc.perform(
+            post("/api/hub/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest))
+        )
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.token").exists())
+            .andExpect(jsonPath("$.expiresAt").exists())
+            .andExpect(jsonPath("$.userId").exists())
+    }
+
+    // ========== Helper Methods ==========
+
+    /**
+     * Creates an expired JWT token for testing.
+     */
+    private fun createExpiredToken(userId: String): String {
+        val now = java.time.Instant.now()
+        val expiredAt = now.minusSeconds(3600) // Expired 1 hour ago
+
+        return io.jsonwebtoken.Jwts.builder()
+            .subject(userId)
+            .issuedAt(java.util.Date.from(now.minusSeconds(7200)))
+            .expiration(java.util.Date.from(expiredAt))
+            .signWith(getSigningKey())
+            .compact()
+    }
+
+    /**
+     * Gets the signing key used by JwtTokenService.
+     * Uses the same default secret for tests.
+     */
+    private fun getSigningKey(): javax.crypto.SecretKey {
+        val secret = "defaultSecretKeyThatShouldBeChangedInProductionAndMustBeAtLeast256BitsLong"
+        return io.jsonwebtoken.security.Keys.hmacShaKeyFor(secret.toByteArray())
+    }
+
 }

@@ -1,5 +1,7 @@
 package com.embabel.hub
 
+import io.jsonwebtoken.Claims
+import io.jsonwebtoken.ExpiredJwtException
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
 import org.springframework.beans.factory.annotation.Value
@@ -24,6 +26,12 @@ class JwtTokenService(
     private val key: SecretKey by lazy {
         Keys.hmacShaKeyFor(jwtSecret.toByteArray())
     }
+
+    /**
+     * Token expiration in seconds (for use when generating expiresAt timestamps).
+     */
+    val tokenExpirationSeconds: Long
+        get() = refreshTokenExpiryDays * 24 * 60 * 60
 
     /**
      * Generates a refresh token for the given user ID.
@@ -57,5 +65,28 @@ class JwtTokenService(
             .parseSignedClaims(token)
 
         return claims.payload.subject
+    }
+
+    /**
+     * Parses a token and returns its claims, even if the token is expired.
+     * This is useful for token refresh where we want to verify the signature
+     * but allow expired tokens.
+     *
+     * @param token The JWT token to parse
+     * @return The claims from the token
+     * @throws io.jsonwebtoken.security.SignatureException if the signature is invalid
+     * @throws io.jsonwebtoken.MalformedJwtException if the token is malformed
+     */
+    fun parseTokenIgnoringExpiration(token: String): Claims {
+        return try {
+            Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .payload
+        } catch (ex: ExpiredJwtException) {
+            // Token is expired but signature was valid - return the claims
+            ex.claims
+        }
     }
 }
