@@ -28,7 +28,7 @@ class ChatStoreConfig {
         // Composite label key is sorted alphabetically with pipe separator.
         pm.registerSubtype(
             StoredUser::class.java,
-            "GuideUser|User",
+            listOf("GuideUser", "User"),
             GuideUserData::class.java
         )
         return pm
