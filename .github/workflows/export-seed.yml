@@ -53,7 +53,7 @@ jobs:
             -DNEO4J_USERNAME=neo4j \
             -DNEO4J_PASSWORD=testpassword \
             -Dguide.reload-content-on-startup=true \
-            -jar target/*.jar &
+            -jar target/*.jar > /tmp/guide.log 2>&1 &
           echo "GUIDE_PID=$!" >> $GITHUB_ENV
 
       - name: Wait for guide to be ready (ingestion completes in constructor)
@@ -64,9 +64,14 @@ jobs:
               echo "Guide is ready after ~${i}0 seconds"
               exit 0
             fi
+            # Show recent log output for progress
+            echo "--- Attempt $i (${i}0s elapsed) ---"
+            tail -5 /tmp/guide.log 2>/dev/null || true
             sleep 10
           done
           echo "ERROR: Guide did not become ready within 20 minutes"
+          echo "=== Full guide log ==="
+          cat /tmp/guide.log
           exit 1
         timeout-minutes: 25
 
