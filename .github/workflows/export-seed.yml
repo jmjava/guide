@@ -1,0 +1,179 @@
+name: Export Seed Database
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * *' # Daily at 5am UTC (before hub docs workflow at 6am)
+
+jobs:
+  export-seed:
+    runs-on: ubuntu-latest
+
+    services:
+      neo4j:
+        image: neo4j:2025.10.1-community-bullseye
+        env:
+          NEO4J_AUTH: neo4j/testpassword
+          NEO4J_PLUGINS: '["apoc"]'
+          NEO4J_dbms_security_procedures_unrestricted: apoc.*
+        ports:
+          - 7474:7474
+          - 7687:7687
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p testpassword 'RETURN 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Checkout guide
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Configure Maven Settings
+        uses: s4u/maven-settings-action@v2.8.0
+        with:
+          servers: ${{ secrets.EMBABEL_ARTIFACTORY }}
+
+      - name: Build guide (skip tests)
+        run: mvn -U -B package -DskipTests
+
+      - name: Start guide with auto-seed
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          java \
+            -DNEO4J_URI=bolt://localhost:7687 \
+            -DNEO4J_USERNAME=neo4j \
+            -DNEO4J_PASSWORD=testpassword \
+            -Dguide.reload-content-on-startup=true \
+            -jar target/*.jar &
+          echo "GUIDE_PID=$!" >> $GITHUB_ENV
+
+      - name: Wait for guide to be ready (ingestion completes in constructor)
+        run: |
+          echo "Waiting for guide to start and finish ingestion..."
+          for i in $(seq 1 120); do
+            if curl -sf http://localhost:1337/actuator/health > /dev/null 2>&1; then
+              echo "Guide is ready after ~${i}0 seconds"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "ERROR: Guide did not become ready within 20 minutes"
+          exit 1
+        timeout-minutes: 25
+
+      - name: Export seed database
+        run: |
+          set -e
+          mkdir -p seed-output
+
+          NEO4J_URL="http://localhost:7474"
+          NEO4J_USER="neo4j"
+          NEO4J_PASS="testpassword"
+
+          echo "Exporting Neo4j database..."
+
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -u "${NEO4J_USER}:${NEO4J_PASS}" \
+            -H "Content-Type: application/json" \
+            "${NEO4J_URL}/db/neo4j/tx/commit" \
+            -d '{
+              "statements": [{
+                "statement": "CALL apoc.export.cypher.all(null, {streamStatements:true, separateFiles:true, format:\"cypher-shell\", useOptimizations:{type:\"UNWIND_BATCH\", unwindBatchSize:20}}) YIELD schemaStatements, nodeStatements, relationshipStatements, cleanupStatements RETURN schemaStatements, nodeStatements, relationshipStatements, cleanupStatements"
+              }]
+            }')
+
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "ERROR: Neo4j returned HTTP $HTTP_CODE"
+            echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+            exit 1
+          fi
+
+          ERRORS=$(echo "$BODY" | python3 -c "import sys,json; errs=json.load(sys.stdin).get('errors',[]); print('\n'.join(e.get('message','') for e in errs))" 2>/dev/null)
+          if [ -n "$ERRORS" ]; then
+            echo "ERROR: Neo4j query failed:"
+            echo "$ERRORS"
+            exit 1
+          fi
+
+          # Extract schema with IF NOT EXISTS
+          echo "$BODY" | python3 -c "
+          import sys, json, re
+          data = json.load(sys.stdin)
+          rows = data['results'][0]['data']
+          lines = []
+          for row in rows:
+              schema = row['row'][0]
+              if schema:
+                  for line in schema.splitlines():
+                      s = line.strip()
+                      if not s or s.startswith('//') or s.startswith(':'):
+                          continue
+                      if s.upper().startswith('CALL '):
+                          continue
+                      s = re.sub(r'^(CREATE\s+(?:FULLTEXT\s+|RANGE\s+)?INDEX)\s+(\S+)\s+FOR\b',
+                                  r'\1 \2 IF NOT EXISTS FOR', s)
+                      s = re.sub(r'^(CREATE\s+(?:FULLTEXT\s+|RANGE\s+)?INDEX)\s+(FOR)\b',
+                                  r'\1 IF NOT EXISTS \2', s)
+                      s = re.sub(r'^(CREATE\s+CONSTRAINT)\s+(\S+)\s+FOR\b',
+                                  r'\1 \2 IF NOT EXISTS FOR', s)
+                      lines.append(s)
+          lines.append('CALL db.awaitIndexes(300);')
+          print('\n'.join(lines))
+          " > seed-output/01-schema.cypher
+
+          # Extract data (nodes, relationships, cleanup)
+          echo "$BODY" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          rows = data['results'][0]['data']
+          for row in rows:
+              schema, nodes, rels, cleanup = row['row']
+              for part in [nodes, rels, cleanup]:
+                  if part:
+                      print(part)
+          " > seed-output/02-graph.cypher
+
+          echo "Schema: $(wc -l < seed-output/01-schema.cypher) lines"
+          echo "Graph:  $(wc -l < seed-output/02-graph.cypher) lines, $(du -h seed-output/02-graph.cypher | cut -f1)"
+
+      - name: Upload seed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-files
+          path: seed-output/
+          retention-days: 30
+
+      - name: Trigger hub update
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.HUB_DISPATCH_TOKEN }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: 'embabel',
+              repo: 'embabel-hub',
+              event_type: 'seed-updated',
+              client_payload: {
+                run_id: String(context.runId),
+                repo: context.repo.owner + '/' + context.repo.repo
+              }
+            })
+            console.log('Dispatched seed-updated event to embabel/embabel-hub')
+
+      - name: Stop guide
+        if: always()
+        run: |
+          if [ -n "$GUIDE_PID" ]; then
+            kill $GUIDE_PID 2>/dev/null || true
+          fi
