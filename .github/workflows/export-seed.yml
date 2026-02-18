@@ -60,7 +60,7 @@ jobs:
         run: |
           echo "Waiting for guide to start and finish ingestion..."
           for i in $(seq 1 120); do
-            if curl -sf http://localhost:1337/actuator/health > /dev/null 2>&1; then
+            if curl -sf http://localhost:1337/api/v1/data/stats > /dev/null 2>&1; then
               echo "Guide is ready after ~${i}0 seconds"
               exit 0
             fi
