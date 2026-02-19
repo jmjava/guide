@@ -55,6 +55,7 @@ class SecurityConfig(
         "/",
         "/index.html",
         "/static/**",
+        "/actuator/**",
     ) + mcpPatterns
 
     @Bean

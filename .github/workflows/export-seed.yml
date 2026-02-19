@@ -76,6 +76,12 @@ jobs:
           exit 1
         timeout-minutes: 25
 
+      - name: Tag all nodes with managedBy
+        run: |
+          echo "Tagging all nodes with managedBy=embabel..."
+          cypher-shell -u neo4j -p testpassword \
+            "MATCH (n) SET n.managedBy = 'embabel' RETURN count(n) AS tagged;"
+
       - name: Export seed database
         run: |
           set -e
