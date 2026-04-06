@@ -71,6 +71,14 @@ class UserLlmResolver(
     fun hasLlm(userId: String): Boolean =
         userKeyStore.getActiveKey(userId) != null || serverProvider != null
 
+    /**
+     * Returns the name of the active LLM provider for a user, for error reporting.
+     */
+    fun activeProviderName(userId: String): String =
+        userKeyStore.getActiveKey(userId)?.first?.name
+            ?: serverProvider?.name
+            ?: "UNKNOWN"
+
     fun resolve(ctx: OperationContext, userId: String, role: LlmRole): PromptRunner {
         val activeKey = userKeyStore.getActiveKey(userId)
         if (activeKey != null) {

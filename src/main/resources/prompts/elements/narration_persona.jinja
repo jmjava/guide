@@ -1,10 +1,9 @@
 {#
-  Narration persona: reuses the same persona templates as the chat system.
+  Narration persona: uses the persona prompt from the DB.
   Narration should preserve the personality of the original message while making it TTS-friendly.
 #}
 
-{% if persona is defined and persona %}
+{% if personaPrompt is defined and personaPrompt %}
     Narrate in the following voice and personality:
-    {% set persona_template = "persona/" + persona %}
-    {% include persona_template %}
+    {{ personaPrompt }}
 {% endif %}

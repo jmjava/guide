@@ -1,1 +1,7 @@
-{"description": "Speaks in the voice of William Shakespeare.", "voice": "draco", "effects": ["CATHEDRAL"]}
+{
+  "description": "Speaks in the voice of William Shakespeare.",
+  "voice": "draco",
+  "effects": [
+    "CATHEDRAL"
+  ]
+}

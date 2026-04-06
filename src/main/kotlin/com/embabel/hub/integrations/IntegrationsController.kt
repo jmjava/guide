@@ -102,6 +102,13 @@ class IntegrationsController(
         return ResponseEntity.ok().build()
     }
 
+    @GetMapping("/keys/blobs")
+    fun getKeyBlobs(authentication: Authentication?): Map<LlmProvider, String> {
+        val userId = requireUserId(authentication)
+        val config = userKeyStore.getConfig(userId) ?: return emptyMap()
+        return config.keys.mapValues { (_, apiKey) -> keyEncryptionService.encrypt(apiKey) }
+    }
+
     @GetMapping("/keys")
     fun getKeys(authentication: Authentication?): List<ProviderStatus> {
         val userId = requireUserId(authentication)

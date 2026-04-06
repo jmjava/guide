@@ -44,7 +44,7 @@ class WebConfig(
         // Other endpoints - specific origins
         registry.addMapping("/**")
             .allowedOrigins(*allOrigins.toTypedArray())
-            .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             .allowedHeaders("*")
             .allowCredentials(true)
     }
@@ -65,7 +65,7 @@ class WebConfig(
         // Other endpoints - specific origins
         val defaultConfig = CorsConfiguration()
         defaultConfig.allowedOrigins = allOrigins
-        defaultConfig.allowedMethods = listOf("GET", "POST", "PUT", "DELETE", "OPTIONS")
+        defaultConfig.allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
         defaultConfig.allowedHeaders = listOf("*")
         defaultConfig.allowCredentials = true
         source.registerCorsConfiguration("/**", defaultConfig)

@@ -38,7 +38,7 @@ class PersonaSeedingService(
     private data class PersonaMeta(
         val description: String? = null,
         val voice: String? = null,
-        val effects: List<AudioEffect>? = null,
+        val effects: List<AudioEffect> = emptyList(),
     )
 
     @EventListener(ApplicationReadyEvent::class)

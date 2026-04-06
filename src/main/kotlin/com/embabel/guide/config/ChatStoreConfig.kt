@@ -6,7 +6,9 @@ import com.embabel.chat.store.adapter.TitleGenerator
 import com.embabel.chat.store.model.StoredUser
 import com.embabel.chat.store.repository.ChatSessionRepository
 import com.embabel.chat.store.repository.ChatSessionRepositoryImpl
+import com.embabel.guide.domain.GuideUserCache
 import com.embabel.guide.domain.GuideUserData
+import com.embabel.guide.domain.GuideUserService
 import com.embabel.hub.integrations.UserKeyStore
 import com.embabel.hub.integrations.UserModelFactory
 import org.drivine.manager.GraphObjectManager
@@ -29,14 +31,32 @@ import org.springframework.context.annotation.Primary
 class ChatStoreConfig {
 
     @Bean
-    fun titleGenerator(userKeyStore: UserKeyStore, userModelFactory: UserModelFactory): TitleGenerator =
+    fun titleGenerator(
+        userKeyStore: UserKeyStore,
+        userModelFactory: UserModelFactory,
+        guideUserCache: GuideUserCache,
+        guideUserService: GuideUserService,
+    ): TitleGenerator =
         LlmTitleGenerator { prompt, userId ->
-            val activeKey = userId?.let { userKeyStore.getActiveKey(it) }
-                ?: return@LlmTitleGenerator TitleGenerator.DEFAULT_FALLBACK
+            val logger = org.slf4j.LoggerFactory.getLogger("TitleGenerator")
+            logger.info("[TITLE] generate called: userId={}", userId)
+            // userId is the internal GuideUser ID; key store is keyed by web user ID
+            val webUserId = userId?.let { id ->
+                guideUserCache.getByInternalId(id)?.webUser?.id
+                    ?: guideUserService.findById(id).orElse(null)?.webUser?.id
+            }
+            logger.info("[TITLE] resolved webUserId={}", webUserId)
+            val activeKey = webUserId?.let { userKeyStore.getActiveKey(it) }
+            if (activeKey == null) {
+                logger.warn("[TITLE] No active key for webUserId={}, returning fallback", webUserId)
+                return@LlmTitleGenerator TitleGenerator.DEFAULT_FALLBACK
+            }
             val (provider, apiKey) = activeKey
-            val service = userModelFactory.getLlmService(provider, provider.summarizerModel, apiKey) as SpringAiLlmService
-            service.chatModel.call(Prompt(UserMessage(prompt))).result.output.text
-                ?: TitleGenerator.DEFAULT_FALLBACK
+            logger.info("[TITLE] Calling {} / {} for title", provider, provider.summarizerModel)
+            val result = userModelFactory.getLlmService(provider, provider.summarizerModel, apiKey) as SpringAiLlmService
+            val title = result.chatModel.call(Prompt(UserMessage(prompt))).result.output.text
+            logger.info("[TITLE] LLM returned: '{}'", title?.take(80))
+            title ?: TitleGenerator.DEFAULT_FALLBACK
         }
 
     @Bean

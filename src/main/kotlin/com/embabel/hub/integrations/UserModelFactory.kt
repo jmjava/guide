@@ -64,10 +64,17 @@ class UserModelFactory(
             }
             null
         } catch (e: InvalidApiKeyException) {
-            logger.debug("API key validation failed for {}: {}", provider, e.message)
-            "Invalid API key"
+            val detail = e.message ?: "Unknown error"
+            logger.warn("API key validation failed for {}: {}", provider, detail)
+            when {
+                detail.contains("429") || detail.contains("rate", ignoreCase = true) ->
+                    "Rate limited by $provider — please wait a moment and try again."
+                detail.contains("401") || detail.contains("unauthorized", ignoreCase = true) ->
+                    "Invalid API key for $provider."
+                else -> "Could not validate key: $detail"
+            }
         } catch (e: Exception) {
-            logger.debug("API key validation failed for {}: {}", provider, e.message)
+            logger.warn("API key validation failed for {}: {}", provider, e.message, e)
             "Could not validate key: ${e.message}"
         }
     }

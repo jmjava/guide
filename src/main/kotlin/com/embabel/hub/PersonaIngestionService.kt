@@ -86,6 +86,48 @@ class PersonaIngestionService(
         }
     }
 
+    /**
+     * Re-validates an updated prompt for an existing persona.
+     * Returns the validated prompt and new description, preserving the existing ID.
+     */
+    fun revalidatePrompt(userId: String, rawPrompt: String): IngestionResult {
+        val trimmed = rawPrompt.trim()
+
+        // Strip existing frame if present (user may have edited the framed version)
+        val unframed = trimmed
+            .removePrefix(FRAME_PREFIX).removeSuffix(FRAME_SUFFIX).trim()
+
+        val lengthError = checkLength(unframed)
+        if (lengthError != null) return IngestionResult.Failure(lengthError)
+
+        val blocklistError = checkBlocklist(unframed)
+        if (blocklistError != null) return IngestionResult.Failure(blocklistError)
+
+        val activeKey = userKeyStore.getActiveKey(userId)
+            ?: return IngestionResult.Failure("You need an API key configured to edit persona prompts.")
+
+        val (provider, apiKey) = activeKey
+        return try {
+            val llmResult = classifyAndDescribe(unframed, provider, apiKey)
+            when {
+                !llmResult.safe -> IngestionResult.Failure(
+                    llmResult.reason ?: "This prompt was flagged as unsafe."
+                )
+                else -> IngestionResult.Success(
+                    PersonaData(
+                        id = "",  // caller will use existing ID
+                        name = "",
+                        prompt = FRAME_PREFIX + unframed + FRAME_SUFFIX,
+                        description = llmResult.description,
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            logger.warn("LLM persona re-validation failed for user={}: {}", userId, e.message)
+            IngestionResult.Failure("Could not validate persona: ${e.message}")
+        }
+    }
+
     private fun checkLength(prompt: String): String? =
         if (prompt.length > MAX_PROMPT_LENGTH)
             "Persona prompt must be $MAX_PROMPT_LENGTH characters or fewer (yours is ${prompt.length})."

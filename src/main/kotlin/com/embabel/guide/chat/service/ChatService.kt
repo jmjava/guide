@@ -2,6 +2,7 @@ package com.embabel.guide.chat.service
 
 import com.embabel.guide.chat.model.CommandRequest
 import com.embabel.guide.chat.model.DeliveredMessage
+import com.embabel.guide.chat.model.LlmKeyError
 import com.embabel.guide.chat.model.SessionEvent
 import com.embabel.guide.chat.model.StatusMessage
 import org.slf4j.LoggerFactory
@@ -34,5 +35,10 @@ class ChatService(private val messaging: SimpMessagingTemplate) {
     fun sendCommandToUser(toUserId: String, command: CommandRequest) {
         logger.info("Sending command {} to user {} via /queue/commands", command.type, toUserId)
         messaging.convertAndSendToUser(toUserId, "/queue/commands", command)
+    }
+
+    fun sendErrorToUser(toUserId: String, error: LlmKeyError) {
+        logger.warn("Sending LLM key error to user {}: {} ({})", toUserId, error.errorCode, error.provider)
+        messaging.convertAndSendToUser(toUserId, "/queue/errors", error)
     }
 }

@@ -32,9 +32,11 @@ import com.embabel.guide.narrator.NarratorAgent
 import com.embabel.guide.rag.DataManager
 import com.embabel.guide.util.truncate
 import com.embabel.hub.PersonaService
+import com.embabel.hub.integrations.LlmKeyException
 import com.embabel.hub.integrations.SetupRequiredChatModel
 import com.embabel.hub.integrations.LlmRole
 import com.embabel.hub.integrations.UserLlmResolver
+import com.embabel.guide.chat.model.LlmKeyError
 import org.slf4j.LoggerFactory
 import java.time.Instant
 import java.util.UUID
@@ -160,7 +162,7 @@ class ChatActions(
             sendResponse(assistantMessage, conversation, context)
         } catch (e: Exception) {
             logger.error("LLM call failed for user {}: {}", context.user(), e.message, e)
-            sendErrorResponse(conversation, context, e)
+            sendErrorResponse(conversation, context, e, guideUser)
         }
     }
 
@@ -185,7 +187,7 @@ class ChatActions(
             sendResponse(assistantMessage, conversation, context)
         } catch (e: Exception) {
             logger.error("Trigger LLM call failed: {}", e.message, e)
-            sendErrorResponse(conversation, context)
+            sendErrorResponse(conversation, context, e, guideUser)
         }
     }
 
@@ -244,7 +246,15 @@ class ChatActions(
         if (displayName != "Unknown") {
             userMap["displayName"] = displayName
         }
-        userMap["customPersona"] = guideUser.core.customPrompt
+
+        // All persona prompts live in the DB — resolve from there
+        val personaPrompt = guideUser.core.customPrompt
+            ?: personaService.findPrompt(persona)
+        if (personaPrompt != null) {
+            userMap["customPersona"] = personaPrompt
+        } else {
+            logger.warn("[PERSONA] No prompt found in DB for persona={}, user={}", persona, guideUser.core.id)
+        }
 
         // Greet by name on first message, ~25% of the time after that
         val isFirstMessage = messages.size <= 1
@@ -274,8 +284,10 @@ class ChatActions(
             ))
         }
         try {
-            val persona = guideUser.core.persona ?: guideProperties.defaultPersona
-            val narration = narratorAgent.narrate(assistantMessage.content, persona, context, guideUser.id)
+            val personaId = guideUser.core.persona ?: guideProperties.defaultPersona
+            val personaPrompt = guideUser.core.customPrompt
+                ?: personaService.findPrompt(personaId)
+            val narration = narratorAgent.narrate(assistantMessage.content, personaPrompt, context, guideUser.id)
             logger.info("[NARRATION] Narration complete for conversation {}: {} chars", conversationId, narration.text.length)
             narrationCache.put(conversationId, narration.text)
         } catch (e: Exception) {
@@ -300,7 +312,26 @@ class ChatActions(
         context.sendMessage(assistantMessage)
     }
 
-    private fun sendErrorResponse(conversation: Conversation, context: ActionContext, cause: Exception? = null) {
+    private fun sendErrorResponse(
+        conversation: Conversation,
+        context: ActionContext,
+        cause: Exception? = null,
+        guideUser: GuideUser? = null,
+    ) {
+        // Send structured WS error for key/auth issues
+        if (cause != null && guideUser != null) {
+            val webUserId = guideUser.webUser?.id
+            val provider = userLlmResolver.activeProviderName(guideUser.id)
+            val keyError = LlmKeyException.classify(cause, provider)
+            if (keyError != null && webUserId != null) {
+                chatService.sendErrorToUser(webUserId, LlmKeyError(
+                    errorCode = keyError.errorCode,
+                    provider = keyError.provider,
+                    message = keyError.message ?: "LLM key error",
+                ))
+            }
+        }
+
         val detail = cause?.let { userFacingErrorDetail(it) } ?: ""
         val errorMessage = AssistantMessage(
             "I'm sorry, I'm having trouble connecting to the AI service right now. $detail".trimEnd() +

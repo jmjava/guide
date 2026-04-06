@@ -103,7 +103,7 @@ class NarratorAgent(
             }
         )
         if (persona != null) {
-            model["persona"] = persona
+            model["personaPrompt"] = persona
         }
         return model
     }

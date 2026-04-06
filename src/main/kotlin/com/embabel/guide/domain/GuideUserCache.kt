@@ -16,15 +16,20 @@ class GuideUserCache {
 
     private val logger = LoggerFactory.getLogger(GuideUserCache::class.java)
     private val cache = ConcurrentHashMap<String, GuideUser>()
+    private val byInternalId = ConcurrentHashMap<String, GuideUser>()
 
     fun get(key: String): GuideUser? = cache[key]
 
+    fun getByInternalId(internalId: String): GuideUser? = byInternalId[internalId]
+
     fun put(key: String, user: GuideUser) {
         cache[key] = user
+        byInternalId[user.core.id] = user
     }
 
     fun invalidate(key: String) {
-        cache.remove(key)
+        val user = cache.remove(key)
+        user?.let { byInternalId.remove(it.core.id) }
         logger.debug("Invalidated GuideUser cache for key {}", key)
     }
 }

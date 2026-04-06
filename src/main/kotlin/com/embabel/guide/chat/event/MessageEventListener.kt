@@ -106,6 +106,7 @@ class MessageEventListener(
                 chatService.sendSessionToUser(webUserId, SessionEvent(
                     sessionId = event.conversationId,
                     title = event.title,
+                    type = "updated",
                 ))
             }
         }

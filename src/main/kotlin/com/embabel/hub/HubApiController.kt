@@ -5,11 +5,13 @@ import com.embabel.guide.chat.service.ChatSessionService
 import com.embabel.guide.domain.GuideUser
 import com.embabel.guide.domain.GuideUserService
 import io.jsonwebtoken.JwtException
+import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.Authentication
 import java.time.Instant
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
@@ -26,6 +28,8 @@ class HubApiController(
     private val chatSessionService: ChatSessionService,
     private val jwtTokenService: JwtTokenService
 ) {
+
+    private val logger = LoggerFactory.getLogger(HubApiController::class.java)
 
     @PostMapping("/register")
     fun registerUser(@RequestBody request: UserRegistrationRequest): GuideUser {
@@ -81,6 +85,24 @@ class HubApiController(
     ): PersonaDto {
         val userId = authentication?.principal as? String ?: throw UnauthorizedException()
         return personaService.createPersona(userId, request.name, request.prompt, request.voice, request.effects)
+    }
+
+    data class PatchPersonaRequest(
+        val name: String? = null,
+        val prompt: String? = null,
+        val voice: String? = null,
+        val effects: List<AudioEffect>? = null,
+    )
+
+    @PatchMapping("/personas/{id}")
+    fun updatePersona(
+        @PathVariable id: String,
+        @RequestBody request: PatchPersonaRequest,
+        authentication: Authentication?,
+    ): PersonaDto {
+        logger.info("[PATCH /personas/{}] request body: {}", id, request)
+        val userId = authentication?.principal as? String ?: throw UnauthorizedException()
+        return personaService.updatePersona(userId, id, request.name, request.prompt, request.voice, request.effects)
     }
 
     @PostMapping("/personas/{id}/copy")
