@@ -3,6 +3,8 @@ package com.embabel.guide.rag;
 import com.embabel.agent.rag.store.ContentElementRepositoryInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -21,12 +23,14 @@ public class IngestionRunner implements ApplicationRunner {
     private static final Logger logger = LoggerFactory.getLogger(IngestionRunner.class);
 
     private final DataManager dataManager;
+    private final ObjectProvider<EmbeddingModel> embeddingModel;
 
     @Value("${server.port:8080}")
     private int serverPort;
 
-    public IngestionRunner(DataManager dataManager) {
+    public IngestionRunner(DataManager dataManager, ObjectProvider<EmbeddingModel> embeddingModel) {
         this.dataManager = dataManager;
+        this.embeddingModel = embeddingModel;
     }
 
     @Override
@@ -92,6 +96,8 @@ public class IngestionRunner implements ApplicationRunner {
         sb.append("    Documents: ").append(stats.getDocumentCount()).append("\n");
         sb.append("    Chunks:    ").append(stats.getChunkCount()).append("\n");
         sb.append("    Elements:  ").append(stats.getContentElementCount()).append("\n");
+        embeddingModel.ifAvailable(model ->
+                sb.append("    Embedding dimensions (runtime model): ").append(model.dimensions()).append("\n"));
         sb.append("\n");
 
         sb.append("  Guide is running on port ").append(serverPort).append("\n");

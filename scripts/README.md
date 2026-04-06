@@ -4,9 +4,12 @@
 |---|---|
 | `fresh-ingest.sh` | Wipes Neo4j RAG data and re-ingests everything from scratch. Use for first-time setup or when you want a clean slate. |
 | `append-ingest.sh` | Re-ingests without clearing existing data. Use when you've added new URLs or directories. Comment out already-ingested items in your profile to avoid re-processing them. |
+| `run-mcp-guide-against-hub.sh` | Run Guide on **`$GUIDE_PORT`** (default **1337**) for MCP at **`/sse`**, using the **same external Bolt defaults** as **`USE_EMBABEL_HUB_NEO4J=1`** in `append-ingest.sh` (self-contained script; no extra `lib/`). |
 | `shell.sh` | Runs the application in interactive shell mode. |
 
-Both ingestion scripts start Neo4j in Docker, load your personal profile, and print an **INGESTION COMPLETE** banner when done.
+Both ingestion scripts load your personal profile and run Guide with reload-on-startup. Watch application logs for ingestion progress. If **`ANTHROPIC_API_KEY`** is not set, `append-ingest.sh` exports a **`dummy-key`** placeholder so Spring starts (Anthropic autoconfigure requires the variable; ingestion embeddings use local ONNX). Put a real key in `.env` when you use Claude.
+
+By default they start **guide** Compose Neo4j (`embabel-neo4j`, Bolt `localhost:7687`). For **any other** Bolt endpoint (different host/port/password), set **`SKIP_COMPOSE_NEO4J=1`** and configure **`NEO4J_URI`**, **`NEO4J_PASSWORD`**, **`NEO4J_PORT`**, etc. The **`append-ingest.sh`** header documents a **`USE_EMBABEL_HUB_NEO4J=1`** shortcut for one common Docker layout; adjust env vars if yours differs. Do **not** point **`fresh-ingest.sh`** at a shared production-style graph (it deletes `ContentElement` nodes).
 
 ## Personal profiles
 
@@ -38,6 +41,30 @@ guide:
 ```
 
 Then run `./scripts/append-ingest.sh`. The new content is added alongside existing data in Neo4j.
+
+## Operator API (shared Neo4j)
+
+When Guide is running, these **`/api/v1/data`** endpoints are open for local/dev use (same security posture as **`load-references`** — do not expose Guide to untrusted networks without a proxy).
+
+| Method | Path | Purpose |
+|--------|------|--------|
+| `POST` | `/api/v1/data/content-elements/purge-preview` | JSON body: `{ "uriPrefix": "..." }` **or** `{ "directory": "~/path/to/repo" }` (not both). Returns match count + sample `uri`s. Prefix must be ≥ 8 characters. |
+| `POST` | `/api/v1/data/content-elements/purge` | Same prefix fields plus `"confirm": true` — **deletes** matching `ContentElement` nodes (`uri STARTS WITH` resolved prefix). |
+| `POST` | `/api/v1/data/git-ingestion/revision/reset` | JSON `{ "directory": "~/path" }` — removes that repo’s entry from the git-ingestion revision file (requires `guide.git-ingestion.enabled`). Next ingest does a full tree for that directory. |
+
+**Directory → `file:` URI:** `directory` is resolved like `guide.directories` (`~` expanded). Chunks use that `file:` prefix in Neo4j.
+
+**Examples:**
+
+```bash
+curl -s -X POST http://localhost:1337/api/v1/data/content-elements/purge-preview \
+  -H 'Content-Type: application/json' \
+  -d '{"directory":"~/github/jmjava/dice"}' | jq .
+
+curl -s -X POST http://localhost:1337/api/v1/data/git-ingestion/revision/reset \
+  -H 'Content-Type: application/json' \
+  -d '{"directory":"~/github/jmjava/dice"}' | jq .
+```
 
 ## Tips
 

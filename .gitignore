@@ -38,6 +38,7 @@ embabel-agent-api/src/main/resources/mcp/**
 # Ignore all personal profile files except the checked-in example
 scripts/user-config/application-*.yml
 !scripts/user-config/application-*.yml.example
+scripts/user-config/ingestion-git-revisions.json
 
 # Temporary files
 *.tmp
