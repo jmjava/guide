@@ -4,6 +4,8 @@ import com.embabel.agent.rag.neo.drivine.model.ContentElementRepositoryInfoImpl
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
+import org.springframework.ai.embedding.EmbeddingModel
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.DefaultApplicationArguments
 import java.io.ByteArrayOutputStream
 import java.io.PrintStream
@@ -13,11 +15,18 @@ class IngestionRunnerTest {
 
     private val dataManager = mock(DataManager::class.java)
 
+    @Suppress("UNCHECKED_CAST")
+    private val embeddingModelProvider = mock(ObjectProvider::class.java) as ObjectProvider<EmbeddingModel>
+
+    init {
+        `when`(embeddingModelProvider.getIfAvailable()).thenReturn(null)
+    }
+
     private fun failure(source: String, reason: String = "test error") =
         IngestionFailure(source, reason)
 
     private fun createRunner(port: Int = 1337): IngestionRunner {
-        val runner = IngestionRunner(dataManager)
+        val runner = IngestionRunner(dataManager, embeddingModelProvider)
         val field = IngestionRunner::class.java.getDeclaredField("serverPort")
         field.isAccessible = true
         field.setInt(runner, port)

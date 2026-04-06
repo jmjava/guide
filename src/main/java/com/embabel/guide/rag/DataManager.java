@@ -17,11 +17,15 @@ import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Exposes references and RAG configuration.
@@ -96,8 +100,7 @@ public class DataManager {
      */
     public DirectoryParsingResult ingestDirectory(String dir, List<IngestionFailure> failedDocuments) {
         var ft = FileTools.readOnly(dir);
-        var directoryParsingResult = new TikaHierarchicalContentReader()
-                .parseFromDirectory(ft, new DirectoryParsingConfig());
+        var directoryParsingResult = hierarchicalContentReader.parseFromDirectory(ft, new DirectoryParsingConfig());
         for (var root : directoryParsingResult.getContentRoots()) {
             String docTitle = "unknown";
             try {
@@ -163,17 +166,35 @@ public class DataManager {
                 loadedUrls.size(), guideProperties.getUrls().size(), failedUrls.size());
 
         List<String> dirs = guideProperties.getDirectories();
+        GitIngestionRevisionStore gitRevisionStore = null;
+        var gitIngestion = guideProperties.getGitIngestion();
+        if (gitIngestion != null && Boolean.TRUE.equals(gitIngestion.getEnabled())) {
+            Path stateFile = Path.of(guideProperties.resolvePath(gitIngestion.getStateFile()));
+            gitRevisionStore = new GitIngestionRevisionStore(stateFile);
+            gitRevisionStore.load();
+        }
         if (dirs != null && !dirs.isEmpty()) {
             for (String dir : dirs) {
                 try {
                     String absolutePath = guideProperties.resolvePath(dir);
-                    logger.info("⏳ Ingesting directory: {}...", absolutePath);
-                    ingestDirectory(absolutePath, failedDocuments);
-                    logger.info("✅ Ingested directory: {}", absolutePath);
+                    boolean handledByGit = gitRevisionStore != null
+                            && ingestDirectoryWithGitRevisionTracking(absolutePath, failedDocuments, gitRevisionStore);
+                    if (!handledByGit) {
+                        logger.info("⏳ Ingesting directory: {}...", absolutePath);
+                        ingestDirectory(absolutePath, failedDocuments);
+                    }
+                    logger.info("✅ Processed directory: {}", absolutePath);
                     ingestedDirs.add(absolutePath);
                 } catch (Throwable t) {
                     logger.error("❌ Failure ingesting directory {}: {}", dir, t.getMessage(), t);
                     failedDirs.add(IngestionFailure.fromException(dir, t));
+                }
+            }
+            if (gitRevisionStore != null && gitRevisionStore.isDirty()) {
+                try {
+                    gitRevisionStore.save();
+                } catch (IOException e) {
+                    logger.error("Failed to save git ingestion revision file: {}", e.getMessage(), e);
                 }
             }
             logger.info("Ingested {}/{} directories ({} dir failures, {} document failures)",
@@ -184,6 +205,83 @@ public class DataManager {
 
         return new IngestionResult(loadedUrls, failedUrls, ingestedDirs, failedDirs,
                 failedDocuments, Duration.between(start, Instant.now()));
+    }
+
+    /**
+     * When {@code guide.git-ingestion.enabled} is true and the path is a git work tree: skip if HEAD matches
+     * the last stored commit; otherwise ingest only files changed since that commit (or full tree if none stored).
+     * Revisions are written to {@code guide.git-ingestion.state-file} when ingestion succeeds without new failures.
+     *
+     * @return true if git logic applied (including skip); false if caller should run a full directory ingest
+     */
+    private boolean ingestDirectoryWithGitRevisionTracking(
+            String absolutePath,
+            List<IngestionFailure> failedDocuments,
+            GitIngestionRevisionStore revStore
+    ) {
+        Path root = Path.of(absolutePath);
+        if (!GitIncrementalDirectorySupport.isGitWorkTree(root)) {
+            return false;
+        }
+        Optional<String> headOpt = GitIncrementalDirectorySupport.headCommit(root);
+        if (headOpt.isEmpty()) {
+            logger.warn("Could not resolve git HEAD for {}; performing full directory ingest", absolutePath);
+            return false;
+        }
+        String head = headOpt.get();
+        String previous = revStore.getRevision(absolutePath).orElse("");
+        if (head.equals(previous)) {
+            logger.info("Skipping directory {} (unchanged git HEAD {})", absolutePath, head);
+            return true;
+        }
+        int failuresBefore = failedDocuments.size();
+        if (previous.isEmpty()) {
+            logger.info("Git-tracked first ingest for {} at {}", absolutePath, head);
+            ingestDirectory(absolutePath, failedDocuments);
+        } else {
+            List<String> changed = GitIncrementalDirectorySupport.changedPathsBetween(root, previous, head);
+            if (changed.isEmpty()) {
+                logger.info("No added/modified files between {}..{} for {}; updating stored revision only",
+                        previous, head, absolutePath);
+            } else {
+                logger.info("Incremental ingest: {} file(s) changed {}..{} under {}", changed.size(), previous, head,
+                        absolutePath);
+                ingestChangedGitFiles(absolutePath, changed, failedDocuments);
+            }
+        }
+        if (failedDocuments.size() == failuresBefore) {
+            revStore.putRevision(absolutePath, head);
+        } else {
+            logger.warn("Not updating stored git revision for {} until ingest succeeds ({} new failure(s))",
+                    absolutePath, failedDocuments.size() - failuresBefore);
+        }
+        return true;
+    }
+
+    private void ingestChangedGitFiles(String repoAbsolutePath, List<String> relativePaths,
+            List<IngestionFailure> failedDocuments) {
+        Path root = Path.of(repoAbsolutePath).toAbsolutePath().normalize();
+        for (String rel : relativePaths) {
+            if (rel == null || rel.isBlank()) {
+                continue;
+            }
+            String normalizedRel = rel.replace('\\', '/');
+            Path file = root.resolve(normalizedRel).normalize();
+            if (!file.startsWith(root)) {
+                logger.warn("Skipping path outside repo: {}", rel);
+                continue;
+            }
+            if (!Files.isRegularFile(file)) {
+                continue;
+            }
+            try {
+                NavigableDocument doc = hierarchicalContentReader.parseFile(file.toFile(), normalizedRel);
+                store.writeAndChunkDocument(doc);
+            } catch (Throwable t) {
+                logger.error("Failed incremental ingest {}: {}", rel, t.getMessage(), t);
+                failedDocuments.add(IngestionFailure.fromException(repoAbsolutePath + " -> " + rel, t));
+            }
+        }
     }
 
 }

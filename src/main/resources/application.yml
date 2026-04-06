@@ -55,9 +55,13 @@ guide:
     - https://medium.com/embabel/the-very-slowly-ticking-time-bomb-in-your-graph-persistence-stack-6da1a8da9515
     - https://medium.com/embabel/the-voice-the-word-and-the-wheel-d6e2ef2ab26e
 
-  # Local directories to ingest (full tree). Paths are absolute or relative to working directory.
-  # Example: clone repos then list them here for full-repo RAG.
+  # Local directories to ingest. Paths are absolute or relative to working directory.
+  # With git-ingestion.enabled, git work trees ingest only changed files since the last run (see state-file).
   directories: []
+
+  git-ingestion:
+    enabled: false
+    state-file: scripts/user-config/ingestion-git-revisions.json
 
   tool-groups:
 
@@ -147,6 +151,7 @@ database:
       userName: ${NEO4J_USERNAME:neo4j}
       password: ${NEO4J_PASSWORD:brahmsian}
       host: ${NEO4J_HOST:localhost}
-      port: 7687
+      # Must match Bolt port on the host when using external Neo4j (default 7687 for guide compose)
+      port: ${NEO4J_PORT:7687}
       protocol: ${NEO4J_PROTOCOL:bolt}
       databaseName: neo4j

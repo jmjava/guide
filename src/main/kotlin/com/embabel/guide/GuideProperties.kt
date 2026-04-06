@@ -22,6 +22,7 @@ import java.nio.file.Path
  * @param urls                   list of URLs to ingest--for example, documentation and blogs
  * @param directories            optional list of local directory paths to ingest (full tree); resolved like projectsPath
  * @param toolGroups             toolGroups, such as "web", that are allowed
+ * @param gitIngestion           optional git-based incremental ingestion for configured directories
  */
 @Validated
 @ConfigurationProperties(prefix = "guide")
@@ -41,7 +42,17 @@ data class GuideProperties(
     val toolPrefix: String,
     val directories: List<String>?,
     val toolGroups: Set<String>,
+    @NestedConfigurationProperty val gitIngestion: GitIngestion? = null,
 ) {
+
+    /**
+     * When [enabled], each configured directory that is a git work tree ingests only files changed since the
+     * last stored commit (see [stateFile]). Non-git directories are always fully ingested.
+     */
+    data class GitIngestion(
+        val enabled: Boolean = false,
+        val stateFile: String = "scripts/user-config/ingestion-git-revisions.json",
+    )
 
     fun toolNamingStrategy(): StringTransformer = StringTransformer { name -> toolPrefix + name }
 
