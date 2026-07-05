@@ -69,10 +69,19 @@ data class GuideProperties(
     val toolGroups: Set<String>,
     val fetchRoutes: List<FetchRoute> = emptyList(),
     @NestedConfigurationProperty val gitIngestion: GitIngestion? = null,
+    @NestedConfigurationProperty val spddProjection: SpddProjection = SpddProjection(),
 ) {
 
     /** All URLs to ingest (versioned + supplementary). */
     val urls: List<String> get() = content.allUrls()
+
+    /**
+     * Leg 3 SPDD entity projection (SPIKE-001). Independent of leg 2 RAG directory ingest.
+     */
+    data class SpddProjection(
+        val enabled: Boolean = false,
+        val defaultRootPath: String = ".",
+    )
 
     /**
      * When [enabled], each configured directory that is a git work tree ingests only files changed since the

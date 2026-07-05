@@ -98,6 +98,7 @@ class SecurityConfig(
                     "/api/v1/data/content-elements/purge-preview",
                     "/api/v1/data/content-elements/purge",
                     "/api/v1/data/git-ingestion/revision/reset",
+                    "/api/v1/data/spdd-projection/load",
                     "/api/hub/integrations/keys/validate",
                     "/api/hub/oauth/*/callback",
                 ).permitAll()
@@ -107,6 +108,8 @@ class SecurityConfig(
                     "/api/hub/personas",
                     "/api/hub/sessions",
                     "/api/v1/data/stats",
+                    "/api/v1/data/spdd-projection/stats",
+                    "/api/v1/data/spdd-projection/work/*",
                     "/api/v1/deepgram/models",
                     "/api/hub/oauth/*/authorize",
                     "/api/hub/email/verify",

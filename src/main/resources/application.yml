@@ -90,6 +90,12 @@ guide:
     enabled: false
     state-file: scripts/user-config/ingestion-git-revisions.json
 
+  # Leg 3: SPDD DICE-style entity projection (coexists with RAG chunk ingest above).
+  # POST /api/v1/data/spdd-projection/load when enabled.
+  spdd-projection:
+    enabled: false
+    default-root-path: .
+
   tool-groups:
 
   email:
