@@ -32,6 +32,10 @@
             <version>${embabel-agent.version}</version>
         </dependency>
 
+        <!--
+          Pin timestamp: newer 0.1.2-SNAPSHOT (20260428+) extends EmbeddingAwareChunkingContentElementRepository
+          and requires embabel-agent 0.4.0. Guide stays on 0.3.5-SNAPSHOT for this spike.
+        -->
         <dependency>
             <groupId>com.embabel.agent</groupId>
             <artifactId>embabel-agent-rag-graph</artifactId>
@@ -225,6 +229,33 @@
                                 <argument>kspKotlin</argument>
                                 <argument>--quiet</argument>
                             </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Fail the build if KSP did not emit PersonaViewQueryDsl (prevents ClassNotFoundException at ready) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>require-ksp-persona-dsl</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireFilesExist>
+                                    <files>
+                                        <file>${project.basedir}/codegen-gradle/build/generated/ksp/main/kotlin/com/embabel/guide/domain/PersonaViewQueryDsl.kt</file>
+                                        <file>${project.basedir}/codegen-gradle/build/generated/ksp/main/kotlin/com/embabel/guide/domain/GuideUserQueryDsl.kt</file>
+                                    </files>
+                                    <message>Drivine KSP DSL missing. From repo root: cd codegen-gradle &amp;&amp; ./gradlew kspKotlin — then rebuild. Do not run concurrent ./mvnw spring-boot:run builds.</message>
+                                </requireFilesExist>
+                            </rules>
                         </configuration>
                     </execution>
                 </executions>

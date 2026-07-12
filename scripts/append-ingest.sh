@@ -52,12 +52,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GUIDE_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$GUIDE_ROOT"
 
+# Preserve an explicitly exported GUIDE_PROFILE across .env load
+_GUIDE_PROFILE_PRESET="${GUIDE_PROFILE-}"
 if [ -f .env ]; then
   echo "Loading .env..."
   set -a
   source .env
   set +a
 fi
+if [ -n "${_GUIDE_PROFILE_PRESET}" ]; then
+  export GUIDE_PROFILE="${_GUIDE_PROFILE_PRESET}"
+fi
+unset _GUIDE_PROFILE_PRESET
 
 if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
   export ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY_INGEST_PLACEHOLDER:-dummy-key}"
@@ -131,8 +137,21 @@ export SPRING_PROFILES_ACTIVE="local,${GUIDE_PROFILE}"
 export NEO4J_URI="${NEO4J_URI:-bolt://localhost:${NEO4J_BOLT_PORT}}"
 export NEO4J_HOST="${NEO4J_HOST:-localhost}"
 
-# Force ingestion on startup
-export GUIDE_RELOADCONTENTONSTARTUP=true
+# Startup ingest: default on for this script (append pass). With guide.git-ingestion.enabled,
+# DataManager only re-chunks files that changed since the last stored HEAD (subdir-aware).
+# Skip startup ingest entirely: FORCE_STARTUP_INGEST=0 (or false/no/off).
+# Force even if profile sets reload-content-on-startup: false: FORCE_STARTUP_INGEST=1 (default).
+if [ -z "${FORCE_STARTUP_INGEST+x}" ]; then
+  FORCE_STARTUP_INGEST=1
+fi
+if truthy "${FORCE_STARTUP_INGEST}"; then
+  export GUIDE_RELOADCONTENTONSTARTUP=true
+  echo "Startup ingest: enabled (git-incremental when guide.git-ingestion.enabled=true)."
+else
+  unset GUIDE_RELOADCONTENTONSTARTUP || true
+  echo "Startup ingest: disabled (FORCE_STARTUP_INGEST=${FORCE_STARTUP_INGEST}); profile YAML reload-content-on-startup applies."
+  echo "Trigger later with: POST /api/v1/data/load-references"
+fi
 
 echo ""
 echo "Starting Guide with profiles: $SPRING_PROFILES_ACTIVE"

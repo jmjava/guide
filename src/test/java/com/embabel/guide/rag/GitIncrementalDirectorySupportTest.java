@@ -41,6 +41,40 @@ class GitIncrementalDirectorySupportTest {
         assertThat(changed).containsExactly("b.txt");
     }
 
+    @Test
+    void findGitWorkTreeRootWalksUpFromSubdirectory() throws Exception {
+        Assumptions.assumeTrue(gitAvailable(), "git must be on PATH");
+
+        run(repo, "git", "init");
+        Path nested = repo.resolve("spdd/canvas");
+        Files.createDirectories(nested);
+        Files.writeString(nested.resolve("readme.md"), "x", StandardCharsets.UTF_8);
+        run(repo, "git", "config", "user.email", "test@test.local");
+        run(repo, "git", "config", "user.name", "Test");
+        run(repo, "git", "add", ".");
+        run(repo, "git", "commit", "-m", "init");
+
+        assertThat(GitIncrementalDirectorySupport.isGitWorkTree(nested)).isFalse();
+        assertThat(GitIncrementalDirectorySupport.findGitWorkTreeRoot(nested))
+                .contains(repo.toAbsolutePath().normalize());
+    }
+
+    @Test
+    void filterPathsUnderDirectoryScopesRepoDiffToConfiguredSubdir() {
+        Path root = Path.of("/repo").toAbsolutePath().normalize();
+        Path canvas = root.resolve("spdd/canvas");
+        List<String> changed = List.of(
+                "spdd/canvas/FEAT-001.md",
+                "spdd/analysis/notes.md",
+                "README.md",
+                "spdd/canvas/extra/nested.md"
+        );
+        assertThat(GitIncrementalDirectorySupport.filterPathsUnderDirectory(root, canvas, changed))
+                .containsExactly("spdd/canvas/FEAT-001.md", "spdd/canvas/extra/nested.md");
+        assertThat(GitIncrementalDirectorySupport.filterPathsUnderDirectory(root, root, changed))
+                .containsExactlyElementsOf(changed);
+    }
+
     private static boolean gitAvailable() throws Exception {
         Process p = new ProcessBuilder("git", "--version").start();
         return p.waitFor(5, TimeUnit.SECONDS) && p.exitValue() == 0;

@@ -40,6 +40,7 @@ You can ingest **only files that changed** in a git work tree since the last run
 
 - In your profile YAML, set **`guide.git-ingestion.enabled: true`** and **`guide.git-ingestion.state-file`** to a JSON path (often under **`scripts/user-config/`** so it stays local and gitignored if you prefer).
 - The runner records the **git HEAD** per configured **`guide.directories`** entry. If HEAD is unchanged, that directory is skipped on the next startup ingest.
+- Directory entries may be **subfolders** of a repo (e.g. `…/spdd/canvas`). Guide walks up to the `.git` root, then only re-ingests files under that subfolder that changed since the last stored HEAD.
 - To **force a full re-ingest** of one directory (for example after a bad partial run), remove that directory’s entry from the state file, or call **`POST /api/v1/data/git-ingestion/revision/reset`** with a JSON body **`{ "directory": "~/path/to/repo" }`** while Guide is running (same path style as in YAML). See **`scripts/README.md`** for curl examples and security notes.
 
 ## Shared Neo4j (Embabel Hub or custom Bolt)

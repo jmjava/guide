@@ -31,6 +31,62 @@ public final class GitIncrementalDirectorySupport {
         return Files.isDirectory(dotGit) || Files.isRegularFile(dotGit);
     }
 
+    /**
+     * Walks parents from {@code start} until a directory containing {@code .git} is found.
+     * Needed because guide profiles often list subdirs (e.g. {@code spdd/canvas}) rather than the repo root.
+     */
+    public static Optional<Path> findGitWorkTreeRoot(Path start) {
+        if (start == null) {
+            return Optional.empty();
+        }
+        Path cur = start.toAbsolutePath().normalize();
+        if (!Files.isDirectory(cur)) {
+            cur = cur.getParent();
+        }
+        while (cur != null) {
+            if (isGitWorkTree(cur)) {
+                return Optional.of(cur);
+            }
+            cur = cur.getParent();
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Keeps repo-relative paths that lie under {@code configuredDir} (itself under {@code gitRoot}).
+     * When {@code configuredDir} is the repo root, all paths are returned.
+     */
+    public static List<String> filterPathsUnderDirectory(
+            Path gitRoot,
+            Path configuredDir,
+            List<String> repoRelativePaths
+    ) {
+        if (repoRelativePaths == null || repoRelativePaths.isEmpty()) {
+            return List.of();
+        }
+        Path root = gitRoot.toAbsolutePath().normalize();
+        Path dir = configuredDir.toAbsolutePath().normalize();
+        if (!dir.startsWith(root)) {
+            return List.of();
+        }
+        String prefix = root.relativize(dir).toString().replace('\\', '/');
+        if (prefix.isEmpty() || ".".equals(prefix)) {
+            return new ArrayList<>(repoRelativePaths);
+        }
+        String prefixSlash = prefix.endsWith("/") ? prefix : prefix + "/";
+        List<String> out = new ArrayList<>();
+        for (String p : repoRelativePaths) {
+            if (p == null || p.isBlank()) {
+                continue;
+            }
+            String n = p.replace('\\', '/');
+            if (n.equals(prefix) || n.startsWith(prefixSlash)) {
+                out.add(n);
+            }
+        }
+        return out;
+    }
+
     public static Optional<String> headCommit(Path repoDir) {
         return runGit(repoDir, List.of("rev-parse", "HEAD"), Duration.ofSeconds(30))
                 .filter(s -> !s.isBlank())

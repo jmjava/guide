@@ -1,6 +1,6 @@
 package com.embabel.guide.rag
 
-import com.embabel.agent.rag.neo.drivine.DrivineCypherSearch
+import com.embabel.agent.rag.graph.DrivineCypherSearch
 import com.embabel.guide.GuideProperties
 import org.drivine.query.QuerySpecification
 import org.drivine.manager.PersistenceManager

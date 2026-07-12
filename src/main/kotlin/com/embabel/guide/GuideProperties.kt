@@ -77,10 +77,17 @@ data class GuideProperties(
 
     /**
      * Leg 3 SPDD entity projection (SPIKE-001). Independent of leg 2 RAG directory ingest.
+     *
+     * @param enabled         activates the projection beans, HTTP operator API, and MCP tools
+     * @param defaultRootPath project root scanned when the load request carries no rootPath
+     * @param allowedRoots    additional roots a load request may override to; the resolved
+     *                        override must live under one of these (or under [defaultRootPath]).
+     *                        Guards the permit-all operator endpoint against arbitrary path scans.
      */
     data class SpddProjection(
         val enabled: Boolean = false,
         val defaultRootPath: String = ".",
+        val allowedRoots: List<String> = emptyList(),
     )
 
     /**

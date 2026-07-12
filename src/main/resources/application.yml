@@ -84,6 +84,7 @@ guide:
 
   # Local directories to ingest. Paths are absolute or relative to working directory.
   # With git-ingestion.enabled, git work trees ingest only changed files since the last run (see state-file).
+  # Subdir entries (e.g. spdd/canvas) are supported: Guide walks up to the .git root and scopes the diff.
   directories: []
 
   git-ingestion:

@@ -1,5 +1,6 @@
 package com.embabel.guide.rag
 
+import com.embabel.guide.stats.GuideStatsService
 import com.embabel.hub.JwtTokenService
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.`when`
@@ -26,6 +27,9 @@ class DataManagerControllerWebMvcTest {
 
     @MockitoBean
     lateinit var jwtTokenService: JwtTokenService
+
+    @MockitoBean
+    lateinit var guideStatsService: GuideStatsService
 
     @Test
     fun `load-references returns 200`() {

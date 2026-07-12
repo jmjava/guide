@@ -19,5 +19,8 @@ object SpddEntityDictionary {
         DynamicType("Pattern", "Reusable pattern", emptyList(), emptyList(), true),
     )
 
+    /** Labels of the SPDD domain schema; used to validate retrieve-side label parameters. */
+    val knownLabels: Set<String> = domainTypes.map { it.name }.toSet()
+
     fun create(): DataDictionary = DataDictionary.fromDomainTypes("sdlc-spdd", domainTypes)
 }

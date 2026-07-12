@@ -211,8 +211,10 @@ public class DataManager {
     }
 
     /**
-     * When {@code guide.git-ingestion.enabled} is true and the path is a git work tree: skip if HEAD matches
-     * the last stored commit; otherwise ingest only files changed since that commit (or full tree if none stored).
+     * When {@code guide.git-ingestion.enabled} is true and the path is inside a git work tree: skip if HEAD matches
+     * the last stored commit; otherwise ingest only files changed since that commit under this directory
+     * (or full tree of the configured directory if none stored).
+     * Configured paths may be repo subdirs (e.g. {@code spdd/canvas}); the git root is discovered by walking parents.
      * Revisions are written to {@code guide.git-ingestion.state-file} when ingestion succeeds without new failures.
      *
      * @return true if git logic applied (including skip); false if caller should run a full directory ingest
@@ -222,13 +224,16 @@ public class DataManager {
             List<IngestionFailure> failedDocuments,
             GitIngestionRevisionStore revStore
     ) {
-        Path root = Path.of(absolutePath);
-        if (!GitIncrementalDirectorySupport.isGitWorkTree(root)) {
+        Path configured = Path.of(absolutePath).toAbsolutePath().normalize();
+        Optional<Path> gitRootOpt = GitIncrementalDirectorySupport.findGitWorkTreeRoot(configured);
+        if (gitRootOpt.isEmpty()) {
             return false;
         }
-        Optional<String> headOpt = GitIncrementalDirectorySupport.headCommit(root);
+        Path gitRoot = gitRootOpt.get();
+        Optional<String> headOpt = GitIncrementalDirectorySupport.headCommit(gitRoot);
         if (headOpt.isEmpty()) {
-            logger.warn("Could not resolve git HEAD for {}; performing full directory ingest", absolutePath);
+            logger.warn("Could not resolve git HEAD for {} (root {}); performing full directory ingest",
+                    absolutePath, gitRoot);
             return false;
         }
         String head = headOpt.get();
@@ -239,17 +244,19 @@ public class DataManager {
         }
         int failuresBefore = failedDocuments.size();
         if (previous.isEmpty()) {
-            logger.info("Git-tracked first ingest for {} at {}", absolutePath, head);
+            logger.info("Git-tracked first ingest for {} at {} (repo {})", absolutePath, head, gitRoot);
             ingestDirectory(absolutePath, failedDocuments);
         } else {
-            List<String> changed = GitIncrementalDirectorySupport.changedPathsBetween(root, previous, head);
+            List<String> changedInRepo = GitIncrementalDirectorySupport.changedPathsBetween(gitRoot, previous, head);
+            List<String> changed = GitIncrementalDirectorySupport.filterPathsUnderDirectory(
+                    gitRoot, configured, changedInRepo);
             if (changed.isEmpty()) {
-                logger.info("No added/modified files between {}..{} for {}; updating stored revision only",
-                        previous, head, absolutePath);
+                logger.info("No added/modified files under {} between {}..{} (repo had {} change(s)); updating stored revision only",
+                        absolutePath, previous, head, changedInRepo.size());
             } else {
-                logger.info("Incremental ingest: {} file(s) changed {}..{} under {}", changed.size(), previous, head,
-                        absolutePath);
-                ingestChangedGitFiles(absolutePath, changed, failedDocuments);
+                logger.info("Incremental ingest: {} file(s) under {} changed {}..{}",
+                        changed.size(), absolutePath, previous, head);
+                ingestChangedGitFiles(gitRoot.toString(), changed, failedDocuments);
             }
         }
         if (failedDocuments.size() == failuresBefore) {
