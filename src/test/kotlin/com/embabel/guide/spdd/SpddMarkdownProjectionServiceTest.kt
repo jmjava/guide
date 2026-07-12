@@ -130,6 +130,18 @@ class SpddMarkdownProjectionServiceTest {
   }
 
   @Test
+  fun `load accepts override equal to the default root`() {
+    // Regression: Path is Iterable<Path>, so `allowedRoots + defaultRoot` once appended
+    // the default root's COMPONENTS, rejecting even an override identical to the default.
+    val root = copyFixtureTo(tempDir.resolve("project"))
+    val service = service(inMemoryRepository(), root.toString())
+
+    val result = service.load(root.toString())
+
+    assertEquals(root.normalize().toString(), result.rootPath)
+  }
+
+  @Test
   fun `load treats blank override as default root`() {
     val root = copyFixtureTo(tempDir.resolve("project"))
     val service = service(inMemoryRepository(), root.toString())

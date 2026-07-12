@@ -120,10 +120,12 @@ class SpddMarkdownProjectionService(
         val defaultRoot = Path.of(guideProperties.resolvePath(projection.defaultRootPath)).normalize()
         val requested = rootPath?.trim()?.takeIf { it.isNotEmpty() } ?: return defaultRoot
         val override = Path.of(guideProperties.resolvePath(requested)).normalize()
+        // listOf() wrapper matters: Path is Iterable<Path>, so `list + path` would
+        // concatenate the path's COMPONENTS, not append the path itself.
         val allowedRoots = projection.allowedRoots
-            .map { Path.of(guideProperties.resolvePath(it)).normalize() } + defaultRoot
+            .map { Path.of(guideProperties.resolvePath(it)).normalize() } + listOf(defaultRoot)
         require(allowedRoots.any { override.startsWith(it) }) {
-            "rootPath override '$override' is not under an allowed root; " +
+            "rootPath override '$override' is not under an allowed root $allowedRoots; " +
                 "configure guide.spdd-projection.allowed-roots to permit it"
         }
         return override
