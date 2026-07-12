@@ -124,6 +124,15 @@ spring:
   output:
     ansi:
       enabled: always
+  # Spring Boot Neo4j auto-config + Neo4jReactiveHealthIndicator use this driver.
+  # Without authentication they connect with AuthTokens.none() → scheme 'none'
+  # failures against embabel-neo4j (auth enabled). Drivine/RAG use database.dataSources
+  # / embabel.agent.rag.graph below; both must agree on credentials.
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD:brahmsian}
   profiles:
     active: neo4j  # Change to 'neo4j', 'falkordb', 'memgraph', or 'default' for TestContainers
     config:
