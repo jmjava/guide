@@ -99,7 +99,8 @@ updates separately.
 
 `com.embabel.guide.spdd`:
 
-- `SpddEntityDictionary` — `DataDictionary` (`DynamicType` spike schema)
+- `domain/SpddDomain.kt` — first-class `NamedEntity` types (`WorkId`, `Canvas`, …) with `@Semantics`
+- `SpddEntityDictionary` — `DataDictionary.fromClasses("sdlc-spdd", …)` (Embabel-standard; not `DynamicType`)
 - `SpddMarkdownProjectionService` — parse + persist + `subgraphForWorkId`
 - `SpddProjectionController` — operator HTTP
 - `SpddDomainTools` — MCP `spdd_*` retrieve tools (`@LlmTool`)

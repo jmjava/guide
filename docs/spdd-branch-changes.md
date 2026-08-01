@@ -16,7 +16,7 @@ flag off, runtime behavior matches upstream except for the additions listed unde
 
 | Class | Role |
 |-------|------|
-| `SpddEntityDictionary` | `DataDictionary` built from `DynamicType`s — the entity schema, also used to validate label parameters on reads |
+| `SpddEntityDictionary` | `DataDictionary.fromClasses` over `NamedEntity` domain types in `spdd.domain` — schema + label validation |
 | `SpddMarkdownProjectionService` | Parses structured markdown (`spdd/canvas/*.md`, `agent-context/memory/context-index.md`) and persists via `NamedEntityDataRepository.save` + `mergeRelationship` (merge-by-id, idempotent). Read side: `subgraphForWorkId`, `lessonsForArea`, `listByLabel` |
 | `SpddProjectionController` | Operator HTTP under `/api/v1/data/spdd-projection` (`load`, `stats`, `work/{workId}`, `area?name=`) with explicit status mapping (400 validation / 404 not found / 409 disabled) |
 | `SpddDomainTools` | `@LlmTool` methods exported to MCP as `spdd_*` via `McpToolExport.fromToolObject(ToolObject(...).withPrefix("spdd_"))`; failures return `{"error": …}` JSON |

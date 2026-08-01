@@ -133,7 +133,11 @@ fi
 echo "Keeping existing RAG data (append mode)."
 
 GUIDE_PROFILE="${GUIDE_PROFILE:-user}"
-export SPRING_PROFILES_ACTIVE="local,${GUIDE_PROFILE}"
+# Embabel default graph dialect is the `neo4j` profile (see application.yml /
+# README "Switching the Graph Database"). Keep it active alongside `local` and
+# the personal GUIDE_PROFILE so Drivine/RAG never silently drop Neo4j.
+# Callers may override the full list via SPRING_PROFILES_ACTIVE.
+export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-neo4j,local,${GUIDE_PROFILE}}"
 export NEO4J_URI="${NEO4J_URI:-bolt://localhost:${NEO4J_BOLT_PORT}}"
 export NEO4J_HOST="${NEO4J_HOST:-localhost}"
 

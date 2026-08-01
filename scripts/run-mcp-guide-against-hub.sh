@@ -83,7 +83,8 @@ if [ "$elapsed" -ge "$max_wait" ]; then
 fi
 
 GUIDE_PROFILE="${GUIDE_PROFILE:-user}"
-export SPRING_PROFILES_ACTIVE="local,${GUIDE_PROFILE}"
+# Keep Embabel Neo4j dialect profile active (see append-ingest.sh).
+export SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE:-neo4j,local,${GUIDE_PROFILE}}"
 export NEO4J_URI="${NEO4J_URI:-bolt://localhost:${NEO4J_BOLT_PORT}}"
 export NEO4J_HOST="${NEO4J_HOST:-localhost}"
 

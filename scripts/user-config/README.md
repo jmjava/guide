@@ -14,7 +14,7 @@ echo 'GUIDE_PROFILE=myname' >> .env
 ## How it works
 
 - The scripts (`fresh-ingest.sh`, `append-ingest.sh`) read `GUIDE_PROFILE` from `.env` (default: `user`)
-- Spring profiles become `local,<GUIDE_PROFILE>` → loads `application-<GUIDE_PROFILE>.yml`
+- Spring profiles become `neo4j,local,<GUIDE_PROFILE>` (Embabel Neo4j dialect kept active) → loads `application-<GUIDE_PROFILE>.yml`
 - The scripts pass `--spring.config.additional-location=file:./scripts/user-config/` so Spring picks up profiles from this directory
 - Personal profiles in `scripts/user-config/` are gitignored (only the `.example` is checked in)
 
