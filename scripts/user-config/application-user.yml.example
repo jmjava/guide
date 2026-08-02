@@ -20,9 +20,13 @@ guide:
     - https://github.com/embabel/embabel-agent
     - https://github.com/embabel/embabel-agent-examples
     - https://github.com/embabel/dice
-  # Ingest full local repos (paths relative to working dir or absolute)
+  # Ingest local repos (paths relative to working dir or absolute)
   directories:
     - ./embabel-projects/dice
     - ./embabel-projects/embabel-agent
     - ./embabel-projects/embabel-agent-examples
+  # Optional: only ingest files that changed in git since last run (stores HEAD per directory in state-file)
+  git-ingestion:
+    enabled: true
+    state-file: scripts/user-config/ingestion-git-revisions.json
   tool-groups:

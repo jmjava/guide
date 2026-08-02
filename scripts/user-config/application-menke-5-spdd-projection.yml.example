@@ -1,0 +1,15 @@
+# Example: enable SPDD leg 3 projection alongside menke-5 RAG ingest.
+# Pair with orchestrator spike branch + POST /api/v1/data/spdd-projection/load
+
+guide:
+  reload-content-on-startup: false
+  spdd-projection:
+    enabled: true
+    default-root-path: ~/github/jmjava/sdlc-spdd-orchestrator
+  directories:
+    - ~/github/jmjava/sdlc-spdd-orchestrator/agent-context/memory
+    - ~/github/jmjava/sdlc-spdd-orchestrator/spdd/canvas
+    - ~/github/jmjava/sdlc-spdd-orchestrator/spdd/analysis
+  git-ingestion:
+    enabled: true
+    state-file: scripts/user-config/ingestion-git-revisions-menke-5.json

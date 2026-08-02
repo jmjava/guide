@@ -82,9 +82,20 @@ guide:
   # archives to retrieve articles aged out of the main feed.
   fetch-routes: []
 
-  # Local directories to ingest (full tree). Paths are absolute or relative to working directory.
-  # Example: clone repos then list them here for full-repo RAG.
+  # Local directories to ingest. Paths are absolute or relative to working directory.
+  # With git-ingestion.enabled, git work trees ingest only changed files since the last run (see state-file).
+  # Subdir entries (e.g. spdd/canvas) are supported: Guide walks up to the .git root and scopes the diff.
   directories: []
+
+  git-ingestion:
+    enabled: false
+    state-file: scripts/user-config/ingestion-git-revisions.json
+
+  # Leg 3: SPDD DICE-style entity projection (coexists with RAG chunk ingest above).
+  # POST /api/v1/data/spdd-projection/load when enabled.
+  spdd-projection:
+    enabled: false
+    default-root-path: .
 
   tool-groups:
 
@@ -113,6 +124,15 @@ spring:
   output:
     ansi:
       enabled: always
+  # Spring Boot Neo4j auto-config + Neo4jReactiveHealthIndicator use this driver.
+  # Without authentication they connect with AuthTokens.none() → scheme 'none'
+  # failures against embabel-neo4j (auth enabled). Drivine/RAG use database.dataSources
+  # / embabel.agent.rag.graph below; both must agree on credentials.
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD:brahmsian}
   profiles:
     active: neo4j  # Change to 'neo4j', 'falkordb', 'memgraph', or 'default' for TestContainers
     config:
@@ -186,7 +206,8 @@ database:
       userName: ${NEO4J_USERNAME:neo4j}
       password: ${NEO4J_PASSWORD:brahmsian}
       host: ${NEO4J_HOST:localhost}
-      port: 7687
+      # Must match Bolt port on the host when using external Neo4j (default 7687 for guide compose)
+      port: ${NEO4J_PORT:7687}
       protocol: ${NEO4J_PROTOCOL:bolt}
       databaseName: neo4j
 

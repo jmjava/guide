@@ -44,6 +44,28 @@ class PersonaSeedingService(
     @EventListener(ApplicationReadyEvent::class)
     @Transactional
     fun seedSystemPersonas() {
+        try {
+            // Fail fast with an actionable message if KSP output wasn't compiled onto the classpath
+            // (common when concurrent spring-boot:run races wipe target/classes).
+            Class.forName("com.embabel.guide.domain.PersonaViewQueryDsl")
+        } catch (e: ClassNotFoundException) {
+            logger.error(
+                "Persona seeding skipped: PersonaViewQueryDsl missing from classpath. " +
+                    "Run `cd codegen-gradle && ./gradlew kspKotlin` then `./mvnw -DskipTests compile` " +
+                    "(avoid concurrent spring-boot:run builds). Guide will stay up for RAG/MCP.",
+                e,
+            )
+            return
+        }
+        try {
+            doSeedSystemPersonas()
+        } catch (e: Exception) {
+            // Hub persona seed must not take down Guide — RAG/MCP and SPDD projection are independent.
+            logger.error("Persona seeding failed; continuing startup", e)
+        }
+    }
+
+    private fun doSeedSystemPersonas() {
         val jesseUserData = getOrCreateJesseUser()
         val existing = personaRepository.findByOwner(SYSTEM_OWNER_ID)
             .map { it.persona.name }

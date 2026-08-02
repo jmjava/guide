@@ -46,6 +46,8 @@ data class ContentConfig(
  * @param content                content source configuration (versioned docs + supplementary)
  * @param directories            optional list of local directory paths to ingest (full tree); resolved like projectsPath
  * @param toolGroups             toolGroups, such as "web", that are allowed
+ * @param fetchRoutes            optional content-fetcher route patterns
+ * @param gitIngestion           optional git-based incremental ingestion for configured directories
  */
 @Validated
 @ConfigurationProperties(prefix = "guide")
@@ -66,10 +68,36 @@ data class GuideProperties(
     val directories: List<String>?,
     val toolGroups: Set<String>,
     val fetchRoutes: List<FetchRoute> = emptyList(),
+    @NestedConfigurationProperty val gitIngestion: GitIngestion? = null,
+    @NestedConfigurationProperty val spddProjection: SpddProjection = SpddProjection(),
 ) {
 
     /** All URLs to ingest (versioned + supplementary). */
     val urls: List<String> get() = content.allUrls()
+
+    /**
+     * Leg 3 SPDD entity projection (SPIKE-001). Independent of leg 2 RAG directory ingest.
+     *
+     * @param enabled         activates the projection beans, HTTP operator API, and MCP tools
+     * @param defaultRootPath project root scanned when the load request carries no rootPath
+     * @param allowedRoots    additional roots a load request may override to; the resolved
+     *                        override must live under one of these (or under [defaultRootPath]).
+     *                        Guards the permit-all operator endpoint against arbitrary path scans.
+     */
+    data class SpddProjection(
+        val enabled: Boolean = false,
+        val defaultRootPath: String = ".",
+        val allowedRoots: List<String> = emptyList(),
+    )
+
+    /**
+     * When [enabled], each configured directory that is a git work tree ingests only files changed since the
+     * last stored commit (see [stateFile]). Non-git directories are always fully ingested.
+     */
+    data class GitIngestion(
+        val enabled: Boolean = false,
+        val stateFile: String = "scripts/user-config/ingestion-git-revisions.json",
+    )
 
     fun toolNamingStrategy(): StringTransformer = StringTransformer { name -> toolPrefix + name }
 
