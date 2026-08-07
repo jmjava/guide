@@ -1,12 +1,12 @@
 {
   "name": "Embabel Guide",
-  "install": "bash .cursor/install.sh",
-  "start": "bash .cursor/start.sh",
+  "install": "bash /agent/repos/guide/.cursor/install.sh",
+  "start": "bash /agent/repos/guide/.cursor/start.sh",
   "terminals": [
     {
       "name": "guide-app",
       "description": "Embabel Guide Spring Boot app (chat + MCP server on :1337). Waits for Neo4j, then runs ./mvnw spring-boot:run.",
-      "command": "export JAVA_HOME=\"${JAVA_HOME:-$(dirname \"$(dirname \"$(readlink -f \"$(command -v java)\")\")\")}\"; echo 'Waiting for Neo4j to be healthy...'; until docker inspect --format '{{.State.Health.Status}}' embabel-neo4j 2>/dev/null | grep -q healthy; do sleep 3; done; ./mvnw spring-boot:run"
+      "command": "cd /agent/repos/guide && export JAVA_HOME=\"${JAVA_HOME:-$(dirname \"$(dirname \"$(readlink -f \"$(command -v java)\")\")\")}\"; echo 'Waiting for Neo4j to be healthy...'; until docker inspect --format '{{.State.Health.Status}}' embabel-neo4j 2>/dev/null | grep -q healthy; do sleep 3; done; ./mvnw spring-boot:run"
     }
   ],
   "ports": [
