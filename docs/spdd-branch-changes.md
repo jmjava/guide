@@ -91,9 +91,25 @@ the SPDD directory conventions only.
 
 ## 6. Known limitations
 
-- Schema uses `DynamicType` + `SimpleNamedEntityData` (spike speed); a permanent home
-  would promote to typed Kotlin `NamedEntity` classes.
+- Domain types are first-class Kotlin `NamedEntity` classes in `spdd.domain` registered
+  via `DataDictionary.fromClasses`. The persist path still materializes
+  `SimpleNamedEntityData` (+ `__Entity__`) for repository writes — that is intentional
+  merge-by-id wiring, not a lingering `DynamicType` schema.
 - Entity→chunk join (`findChunksForEntity`) exists at the store level but is not exposed
   on the projection API yet.
 - `Operation`, session, and domain-keyword entities are declared in the schema roadmap
   but not projected yet.
+
+## 7. Upstream absorption candidates
+
+See **`docs/spdd-upstream-absorption.md`** (SPIKE-003). Short version:
+
+| Slice | Posture |
+|-------|---------|
+| `com.embabel.guide.spdd` + `spdd_*` MCP | **Keep on `jmjava/guide`** (SPDD-coupled) |
+| Git-incremental directory ingest + RAG maintenance | **Best first upstream PR** to `embabel/guide` |
+| Generic entity MCP (no SPDD prefix) | Design separately if Embabel wants a native context-graph API |
+| neo-drivine timestamp pin / agent 0.3.5 lag | Fork-local until upstream versions align |
+
+Orchestrator research lives under Work ID
+`SPIKE-003-embabel-context-graph-absorption`.
