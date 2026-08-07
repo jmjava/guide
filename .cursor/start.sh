@@ -6,7 +6,8 @@
 #   * the Neo4j graph database (default `neo4j` Spring profile -> bolt://localhost:7687)
 #
 # The Guide Spring Boot app itself runs as a visible `terminals` entry
-# (see .cursor/environment.json) so its logs stay inspectable.
+# (see .cursor/environment.json) so its logs stay inspectable. Daemon-side
+# docker calls use sudo (the docker group is not active in this process).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,12 +18,12 @@ bash "$REPO_ROOT/.cursor/ensure-docker.sh"
 
 # 2. Start Neo4j (idempotent: compose reuses the existing container).
 echo "Starting Neo4j..."
-docker compose up neo4j -d
+sudo docker compose up neo4j -d
 
 # 3. Wait for Neo4j to report healthy so the app can connect on boot.
 status="unknown"
 for _ in $(seq 1 60); do
-  status="$(docker inspect --format '{{.State.Health.Status}}' embabel-neo4j 2>/dev/null || echo none)"
+  status="$(sudo docker inspect --format '{{.State.Health.Status}}' embabel-neo4j 2>/dev/null || echo none)"
   if [ "$status" = "healthy" ]; then
     break
   fi
@@ -31,7 +32,7 @@ done
 echo "Neo4j health: $status"
 
 if [ "$status" != "healthy" ]; then
-  echo "WARN: Neo4j did not become healthy in time; check 'docker logs embabel-neo4j'." >&2
+  echo "WARN: Neo4j did not become healthy in time; check 'sudo docker logs embabel-neo4j'." >&2
 fi
 
 echo "start.sh complete."

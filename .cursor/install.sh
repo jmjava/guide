@@ -8,7 +8,9 @@
 #   * The Neo4j image pre-pulled so `start` is fast on every boot
 #
 # Per-boot runtime (starting dockerd, Neo4j, the app) lives in start.sh /
-# environment.json terminals, not here.
+# environment.json terminals, not here. Daemon-side docker calls use sudo
+# because the docker group is not active in this process yet (passwordless
+# sudo is available in the Cloud Agent VM).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -32,9 +34,9 @@ export JAVA_HOME="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v
 echo "Using JAVA_HOME=$JAVA_HOME"
 ./mvnw -B -U compile test-compile
 
-# 4. Pre-pull the Neo4j image referenced by compose.yaml (best effort).
-docker compose --profile neo4j pull neo4j \
-  || docker pull neo4j:2025.10.1-community-bullseye \
+# 4. Pre-pull the Neo4j image referenced by compose.yaml (best effort, sudo).
+sudo docker compose --profile neo4j pull neo4j \
+  || sudo docker pull neo4j:2025.10.1-community-bullseye \
   || echo "WARN: could not pre-pull Neo4j image; start.sh will pull on demand."
 
 echo "install.sh complete."
