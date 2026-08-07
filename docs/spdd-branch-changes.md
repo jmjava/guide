@@ -110,6 +110,7 @@ See **`docs/spdd-upstream-absorption.md`** (SPIKE-003). Short version:
 | Git-incremental directory ingest + RAG maintenance | **Best first upstream PR** to `embabel/guide` |
 | Generic entity MCP (no SPDD prefix) | Design separately if Embabel wants a native context-graph API |
 | neo-drivine timestamp pin / agent 0.3.5 lag | Fork-local until upstream versions align |
+| Cloud Agent dual-repo `.cursor/*` env | **Keep on `jmjava/guide`** (Cursor dogfood ops) |
 
 Orchestrator research lives under Work ID
 `SPIKE-003-embabel-context-graph-absorption`.

@@ -11,12 +11,14 @@ Paired research: orchestrator Work ID
 
 | Home | Contents |
 |------|----------|
-| `jmjava/guide` (tag `sdlc-spdd-projection-v1`) | Full SPIKE-001 package: `com.embabel.guide.spdd`, git-incremental ingest, ops hardening |
+| `jmjava/guide` pin `sdlc-spdd-projection-v1` (`a6e3246`) | SPIKE-001 package: `com.embabel.guide.spdd`, git-incremental ingest, ops hardening |
+| `jmjava/guide` tip (`main`) | Pin + this absorption doc + Cloud Agent dual-repo env (Guide + orchestrator) |
 | `embabel/guide` `main` | Baseline Guide without SPDD projection or git-incremental directory ingest |
 
 **Recommendation:** keep the SPDD context-graph package on this fork; treat
 **git-incremental directory ingest + RAG maintenance** as the first upstreamable
 slice; do **not** upstream `spdd_*` as Embabel’s native domain-graph API.
+Cloud Agent / dual-repo `.cursor/*` env files stay fork-local.
 
 ## Absorption candidates
 
@@ -36,6 +38,12 @@ slice; do **not** upstream `spdd_*` as Embabel’s native domain-graph API.
    git revision reset (same local-ops posture as `load-references`).
 3. **Ops hardening** — Neo4j Spring authentication alignment, Persona seeding
    resilience, KSP DSL enforcer (review against current upstream agent versions).
+
+### Keep on fork (Cursor / dogfood ops — not Embabel product)
+
+- `.cursor/environment.json` and install/start scripts for the dual-repo Cloud Agent
+  environment (`jmjava/guide` + `jmjava/sdlc-spdd-orchestrator`).
+- Docker socket / CWD hardening that exists only to make that environment reliable.
 
 ### Design separately (do not rename `spdd_*` upstream)
 
