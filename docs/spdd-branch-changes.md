@@ -107,7 +107,7 @@ See **`docs/spdd-upstream-absorption.md`** (SPIKE-003). Short version:
 | Slice | Posture |
 |-------|---------|
 | `com.embabel.guide.spdd` + `spdd_*` MCP | **Keep on `jmjava/guide`** (SPDD-coupled) |
-| Git-incremental directory ingest + RAG maintenance | **Best first upstream PR** to `embabel/guide` |
+| Git-incremental directory ingest + RAG maintenance | **Accepted first upstream PR** — FEAT-013 in progress |
 | Generic entity MCP (no SPDD prefix) | Design separately if Embabel wants a native context-graph API |
 | neo-drivine timestamp pin / agent 0.3.5 lag | Fork-local until upstream versions align |
 | Cloud Agent dual-repo `.cursor/*` env | **Keep on `jmjava/guide`** (Cursor dogfood ops) |

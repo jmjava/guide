@@ -15,10 +15,13 @@ Paired research: orchestrator Work ID
 | `jmjava/guide` tip (`main`) | Pin + this absorption doc + Cloud Agent dual-repo env (Guide + orchestrator) |
 | `embabel/guide` `main` | Baseline Guide without SPDD projection or git-incremental directory ingest |
 
-**Recommendation:** keep the SPDD context-graph package on this fork; treat
-**git-incremental directory ingest + RAG maintenance** as the first upstreamable
-slice; do **not** upstream `spdd_*` as Embabel’s native domain-graph API.
-Cloud Agent / dual-repo `.cursor/*` env files stay fork-local.
+**Recommendation (Accepted 2026-08-07):** keep the SPDD context-graph package on
+this fork; treat **git-incremental directory ingest + RAG maintenance** as the
+first upstreamable slice; do **not** upstream `spdd_*` as Embabel’s native
+domain-graph API. Cloud Agent / dual-repo `.cursor/*` env files stay fork-local.
+
+Follow-on Work ID: orchestrator
+`FEAT-013-guide-git-incremental-upstream` (Layer B → draft PR to `embabel/guide`).
 
 ## Absorption candidates
 
