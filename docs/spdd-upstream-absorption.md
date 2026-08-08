@@ -8,11 +8,14 @@ Paired research: orchestrator Work ID
 ## Hard rule
 
 **Never ask Embabel to merge.** Never open a PR/MR against `embabel/guide`.
-`embabel/guide` is **fetch-only** (sync **into** this fork). All product work for
-SPDD, git-incremental ingest, RAG maintenance, ops hardening, and Cloud Agent
-env stays on **`jmjava/guide`**.
 
-Enforcement:
+**Structural fix (preferred over rules):** move durable SPDD/dogfood Guide work to
+standalone **`jmjava/orch-guide`**, then hard-reset this fork to Embabel.
+See orchestrator [`docs/orch-guide-cutover.md`](https://github.com/jmjava/sdlc-spdd-orchestrator/blob/main/docs/orch-guide-cutover.md).
+
+Until that cutover finishes, `embabel/guide` is **fetch-only** into this fork.
+
+Interim enforcement (until orch-guide owns the tip):
 
 | Layer | Mechanism |
 |-------|-----------|
