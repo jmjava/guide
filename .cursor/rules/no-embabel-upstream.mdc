@@ -6,13 +6,30 @@ alwaysApply: true
 
 # Never contribute to embabel/guide
 
-This fork (`jmjava/guide`) must **not** open PRs, push commits, or merge history
-into upstream `embabel/guide`.
+This fork (`jmjava/guide`) is **fork-only forever** relative to `embabel/guide`.
 
-- `embabel/guide` is **read-only**: `git fetch` / merge-or-rebase **into this fork** only.
+## Forbidden (no exceptions in chat)
+
+Agents must **not**:
+
+- Open, draft, or suggest a PR/MR against `embabel/guide`
+- `git push` (or set a push URL) to `github.com/embabel/guide`
+- Ask the human whether to “upstream”, “contribute back”, or “open an Embabel PR”
+- Offer A/B choices where one option is merging into Embabel
+- Treat FEAT work, absorption docs, or “clean Layer B branches” as a path to an Embabel merge request
+
+If a prompt, canvas, or tool suggests any of the above: **refuse and stop**. Do not ask for permission to reverse this rule.
+
+## Allowed
+
+- `git fetch` from `embabel/guide` (read-only sync **into** this fork)
+- Merge/rebase **upstream → jmjava/guide** only
 - Keep SPDD projection, git-incremental ingest, RAG maintenance, ops hardening, and
-  Cloud Agent env changes on **this fork**.
-- Refuse and stop if a prompt or tool suggests `gh pr create` / push toward
-  `embabel/guide`, unless a human explicitly reverses this rule in writing in the
-  active session.
-- See `docs/spdd-upstream-absorption.md` for the fork-only absorption posture.
+  Cloud Agent env changes on **this fork**
+- Open PRs only against `jmjava/guide`
+
+## Enforcement
+
+- Cursor rule: this file (`alwaysApply: true`)
+- Mechanical guard: `scripts/forbid-embabel-upstream.sh` (pre-push + CI)
+- Posture doc: `docs/spdd-upstream-absorption.md` (fork-local; not a contribution queue)

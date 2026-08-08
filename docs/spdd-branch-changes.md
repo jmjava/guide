@@ -100,17 +100,19 @@ the SPDD directory conventions only.
 - `Operation`, session, and domain-keyword entities are declared in the schema roadmap
   but not projected yet.
 
-## 7. Upstream absorption candidates
+## 7. Fork-only posture (never Embabel PR)
 
-See **`docs/spdd-upstream-absorption.md`** (SPIKE-003). Short version:
+See **`docs/spdd-upstream-absorption.md`**. Short version:
 
 | Slice | Posture |
 |-------|---------|
-| `com.embabel.guide.spdd` + `spdd_*` MCP | **Keep on `jmjava/guide`** (SPDD-coupled) |
-| Git-incremental directory ingest + RAG maintenance | **Accepted first upstream PR** — FEAT-013 in progress |
-| Generic entity MCP (no SPDD prefix) | Design separately if Embabel wants a native context-graph API |
-| neo-drivine timestamp pin / agent 0.3.5 lag | Fork-local until upstream versions align |
-| Cloud Agent dual-repo `.cursor/*` env | **Keep on `jmjava/guide`** (Cursor dogfood ops) |
+| `com.embabel.guide.spdd` + `spdd_*` MCP | **Keep on `jmjava/guide`** |
+| Git-incremental directory ingest + RAG maintenance | **Keep on `jmjava/guide`** (FEAT-013 complete; no Embabel PR) |
+| Ops hardening / Cloud Agent dual-repo `.cursor/*` | **Keep on `jmjava/guide`** |
+| `embabel/guide` | Fetch/merge **in** only — push/PR **out** forbidden |
+
+Guards: `.cursor/rules/no-embabel-upstream.mdc`,
+`scripts/forbid-embabel-upstream.sh`, CI workflow.
 
 Orchestrator research lives under Work ID
 `SPIKE-003-embabel-context-graph-absorption`.

@@ -1,89 +1,75 @@
-# SPDD / context-graph upstream absorption notes
+# SPDD / context-graph fork posture (not an Embabel contribution queue)
 
-Audience: Guide maintainers deciding what from the `jmjava/guide` SPIKE-001 delta
-should stay fork-local versus be proposed to `embabel/guide`.
+Audience: agents and humans working on `jmjava/guide`.
 
 Paired research: orchestrator Work ID
-`SPIKE-003-embabel-context-graph-absorption`
-(branch `cursor/embabel-context-graph-research-65ca`).
+`SPIKE-003-embabel-context-graph-absorption`.
+
+## Hard rule
+
+**Never ask Embabel to merge.** Never open a PR/MR against `embabel/guide`.
+
+**Structural fix:** durable SPDD/dogfood Guide work now lives on standalone
+**[`jmjava/orch-guide`](https://github.com/jmjava/orch-guide)** (`main` + tag
+`sdlc-spdd-projection-v2`, bootstrapped 2026-08-08). Next: merge orchestrator
+retarget (PR #128), point Cloud Agent env at `orch-guide`, then **hard-reset this
+fork** to Embabel. See orchestrator
+[`docs/orch-guide-cutover.md`](https://github.com/jmjava/sdlc-spdd-orchestrator/blob/cursor/guide-persistence-pin-f564/docs/orch-guide-cutover.md).
+
+Until that hard-reset, `embabel/guide` is **fetch-only** into this fork.
+
+Interim enforcement on this fork (orch-guide is already the durable home):
+
+| Layer | Mechanism |
+|-------|-----------|
+| Agent | `.cursor/rules/no-embabel-upstream.mdc` (`alwaysApply`) |
+| Git | `scripts/forbid-embabel-upstream.sh` + `scripts/install-git-hooks.sh` |
+| CI | `.github/workflows/forbid-embabel-upstream.yml` |
 
 ## Current posture (2026-08-08)
 
 | Home | Contents |
 |------|----------|
-| `jmjava/guide` pin `sdlc-spdd-projection-v2` (`28bdb5d`) | SPIKE-001 package + lean/legacy context-index dual-read ([PR #7](https://github.com/jmjava/guide/pull/7)); supersedes `sdlc-spdd-projection-v1` |
-| `jmjava/guide` tip (`main`) | Pin contents + absorption doc + Cloud Agent dual-repo env |
-| Layer B candidate branch | `cursor/feat-013-layer-b-upstream-f564` — clean rebase onto `embabel/guide` `main` (no `com.embabel.guide.spdd`) |
-| `embabel/guide` `main` | Baseline Guide without SPDD projection or git-incremental directory ingest |
+| `jmjava/guide` pin `sdlc-spdd-projection-v2` (`28bdb5d`) | SPIKE-001 package + lean/legacy context-index dual-read ([PR #7](https://github.com/jmjava/guide/pull/7)) |
+| `jmjava/guide` tip (`main`) | Pin contents + this posture doc + Cloud Agent dual-repo env |
+| `embabel/guide` `main` | Read-only upstream baseline (fetch/merge **in**, never PR **out**) |
 
-**Recommendation (Accepted 2026-08-07):** keep the SPDD context-graph package on
-this fork; treat **git-incremental directory ingest + RAG maintenance** as the
-first upstreamable slice; do **not** upstream `spdd_*` as Embabel’s native
-domain-graph API. Cloud Agent / dual-repo `.cursor/*` env files stay fork-local.
+**Decision (Accepted):** keep the SPDD context-graph package **and**
+git-incremental / RAG maintenance on this fork. Do **not** treat any slice as
+an Embabel merge request. Dual-repo `.cursor/*` env files stay fork-local.
 
 ### FEAT-013 status
 
-- **T02/T03:** Layer B branch prepared and tests green on
-  `cursor/feat-013-layer-b-upstream-f564` (see `docs/git-incremental-ingestion.md` on that branch).
-- **T04 upstream PR:** **blocked** by fork-only rule
-  (`.cursor/rules/no-embabel-upstream.mdc`) — this fork must not open PRs to
-  `embabel/guide` unless a human explicitly reverses that rule in-session.
-  Candidate branch remains on `jmjava/guide` for hand-off or rule reversal.
+- Layer B (git-incremental + RAG maintenance) lives on the fork (also isolated on
+  branch `cursor/feat-013-layer-b-upstream-f564` for reviewability only).
+- **No Embabel PR** — by policy, not as a temporary blocker.
+- Work ID closes as **fork-only complete**.
 
-## Absorption candidates
+## What stays on the fork
 
-### Keep on fork (SPDD-specific)
+- Entire `com.embabel.guide.spdd` package (`spdd_*` MCP, projection HTTP).
+- Git-incremental directory ingest + RAG maintenance operator APIs.
+- Ops hardening that exists for dogfood (Neo4j auth alignment, Persona resilience, etc.).
+- Cloud Agent dual-repo `.cursor/*` install/start scripts.
 
-- Entire `com.embabel.guide.spdd` package (domain types, markdown projection, HTTP,
-  MCP `spdd_*`).
-- Coupling is to SPDD directory conventions and label vocabulary
-  (`WorkId`, `Canvas`, `Area`, `Decision`, `Pitfall`, `Pattern`).
-- Opt-in flag `guide.spdd-projection.enabled` (default **false**) must remain.
+## Sync process (inbound only)
 
-### Strong upstream candidates (Embabel-general)
+1. `git fetch upstream main` (push URL for `upstream` must be `DISABLED`).
+2. Merge/rebase **into** `jmjava/guide`.
+3. Re-run SPDD unit tests + smoke projection if the graph contract moved.
+4. Cut a successor pin tag when the orchestrator dogfood pin should move.
 
-1. **Git-incremental directory ingest** — `GitIncrementalDirectorySupport`,
-   `GitIngestionRevisionStore`, `DataManager` hooks, `guide.git-ingestion.*`.
-2. **RAG maintenance operator APIs** — content-element purge preview/purge,
-   git revision reset (same local-ops posture as `load-references`).
-3. **Ops hardening** — Neo4j Spring authentication alignment, Persona seeding
-   resilience, KSP DSL enforcer (review against current upstream agent versions).
-
-### Keep on fork (Cursor / dogfood ops — not Embabel product)
-
-- `.cursor/environment.json` and install/start scripts for the dual-repo Cloud Agent
-  environment (`jmjava/guide` + `jmjava/sdlc-spdd-orchestrator`).
-- Docker socket / CWD hardening that exists only to make that environment reliable.
-
-### Design separately (do not rename `spdd_*` upstream)
-
-If Embabel wants a reusable **context graph** MCP surface, prefer schema-agnostic
-tools over SPDD prefixes, for example:
-
-- list entities by label (validated against a registered `DataDictionary`)
-- subgraph / related-by-rel-type from an entity id
-- optional entity→chunk join via store `findChunksForEntity`
-
-SPDD projection can remain a Guide (or consumer) module that *uses* those primitives.
-
-## Sync process for this fork
-
-1. `git fetch upstream main && git merge upstream/main` (or rebase policy of the day).
-2. Re-run SPDD unit tests + a smoke projection load against a fixture root.
-3. If projection HTTP/MCP contract changes, cut a new orchestrator pin tag
-   (successor to `sdlc-spdd-projection-v1`) and update orchestrator docs/console default.
-4. Refresh this file’s candidate table when a slice is upstreamed or abandoned.
-
-## Known gaps before a “full DICE” upstream story
-
-- Entity→chunk join exists at the store level but is not on the projection HTTP/MCP API.
-- `Operation`, session, and domain-keyword entities are schema-roadmap items, not yet
-  projected.
-- Persist path still uses `SimpleNamedEntityData` with labels from first-class
-  `NamedEntity` types in `spdd.domain` (see `docs/spdd-branch-changes.md`).
+```bash
+# one-time per clone
+./scripts/install-git-hooks.sh
+git remote add upstream https://github.com/embabel/guide.git   # if missing
+git remote set-url --push upstream DISABLED
+./scripts/forbid-embabel-upstream.sh
+```
 
 ## Explicit non-goals
 
-- Do not force SPDD conventions into upstream Guide defaults.
+- Do not open PRs to `embabel/guide` (small or large).
+- Do not ask humans “should we upstream this?”
+- Do not force SPDD conventions into Embabel defaults via contribution.
 - Do not collapse this work into local-LLM / embedding-format experiments.
-- Do not open a giant “entire fork” PR to `embabel/guide`.

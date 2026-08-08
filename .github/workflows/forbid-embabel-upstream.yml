@@ -1,0 +1,22 @@
+name: Forbid embabel/guide push target
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  forbid-embabel-upstream:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse embabel/guide as a push destination
+        run: |
+          chmod +x scripts/forbid-embabel-upstream.sh
+          # CI checkout has only origin (jmjava/guide). Still run the guard.
+          ./scripts/forbid-embabel-upstream.sh
+          # Simulate a forbidden push URL — must fail.
+          if ./scripts/forbid-embabel-upstream.sh --pre-push evil https://github.com/embabel/guide.git; then
+            echo "expected forbid script to fail for embabel/guide push URL" >&2
+            exit 1
+          fi
+          echo "negative check OK"
