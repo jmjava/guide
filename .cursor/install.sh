@@ -12,6 +12,14 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# 0. Fork-only guard: never push/PR to embabel/guide.
+if [[ -x "$REPO_ROOT/scripts/install-git-hooks.sh" ]]; then
+  bash "$REPO_ROOT/scripts/install-git-hooks.sh" || true
+fi
+if git remote get-url upstream >/dev/null 2>&1; then
+  git remote set-url --push upstream DISABLED || true
+fi
+
 # 1. System packages: Docker + nested-container deps (best effort).
 if ! command -v docker >/dev/null 2>&1; then
   echo "Installing Docker and dependencies..."
