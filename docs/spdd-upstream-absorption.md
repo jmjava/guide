@@ -9,13 +9,16 @@ Paired research: orchestrator Work ID
 
 **Never ask Embabel to merge.** Never open a PR/MR against `embabel/guide`.
 
-**Structural fix (preferred over rules):** move durable SPDD/dogfood Guide work to
-standalone **`jmjava/orch-guide`**, then hard-reset this fork to Embabel.
-See orchestrator [`docs/orch-guide-cutover.md`](https://github.com/jmjava/sdlc-spdd-orchestrator/blob/main/docs/orch-guide-cutover.md).
+**Structural fix:** durable SPDD/dogfood Guide work now lives on standalone
+**[`jmjava/orch-guide`](https://github.com/jmjava/orch-guide)** (`main` + tag
+`sdlc-spdd-projection-v2`, bootstrapped 2026-08-08). Next: merge orchestrator
+retarget (PR #128), point Cloud Agent env at `orch-guide`, then **hard-reset this
+fork** to Embabel. See orchestrator
+[`docs/orch-guide-cutover.md`](https://github.com/jmjava/sdlc-spdd-orchestrator/blob/cursor/guide-persistence-pin-f564/docs/orch-guide-cutover.md).
 
-Until that cutover finishes, `embabel/guide` is **fetch-only** into this fork.
+Until that hard-reset, `embabel/guide` is **fetch-only** into this fork.
 
-Interim enforcement (until orch-guide owns the tip):
+Interim enforcement on this fork (orch-guide is already the durable home):
 
 | Layer | Mechanism |
 |-------|-----------|
