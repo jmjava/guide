@@ -33,6 +33,11 @@ bash "$REPO_ROOT/scripts/start-native-neo4j.sh" \
 if [[ -x /opt/neo4j/bin/neo4j ]]; then
   /opt/neo4j/bin/neo4j stop 2>/dev/null || true
 fi
+# Do not bake a warm Neo4j store into the environment snapshot. Interrupted
+# vector-index checkpoints fail recovery on the next boot; start.sh recreates
+# a clean store under /opt/neo4j when needed.
+rm -rf /opt/neo4j/data /opt/neo4j/run
+mkdir -p /opt/neo4j/data /opt/neo4j/run
 
 # 4. Warm Maven: Drivine KSP codegen + package the runnable JVM jar.
 #    Packaging (~300MB jar + ~/.m2) is what makes Guide start fast on later boots
