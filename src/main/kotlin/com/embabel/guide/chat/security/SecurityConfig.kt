@@ -95,6 +95,9 @@ class SecurityConfig(
                     "/api/hub/refresh",
                     "/api/hub/feedback",
                     "/api/v1/data/load-references",
+                    "/api/v1/data/content-elements/purge-preview",
+                    "/api/v1/data/content-elements/purge",
+                    "/api/v1/data/git-ingestion/revision/reset",
                     "/api/hub/integrations/keys/validate",
                     "/api/hub/oauth/*/callback",
                 ).permitAll()
