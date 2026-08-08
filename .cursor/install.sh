@@ -35,9 +35,14 @@ if [[ -x /opt/neo4j/bin/neo4j ]]; then
 fi
 # Do not bake a warm Neo4j store into the environment snapshot. Interrupted
 # vector-index checkpoints fail recovery on the next boot; start.sh recreates
-# a clean store under /opt/neo4j when needed.
-rm -rf /opt/neo4j/data /opt/neo4j/run
-mkdir -p /opt/neo4j/data /opt/neo4j/run
+# a clean store under /opt/neo4j when needed. Re-apply the initial password so
+# a bare `neo4j start` (or start.sh) still authenticates as neo4j/brahmsian.
+if [[ -x /opt/neo4j/bin/neo4j ]]; then
+  rm -rf /opt/neo4j/data /opt/neo4j/run
+  mkdir -p /opt/neo4j/data /opt/neo4j/run
+  /opt/neo4j/bin/neo4j-admin dbms set-initial-password \
+    "${NEO4J_PASSWORD:-brahmsian}" 2>/dev/null || true
+fi
 
 # 4. Warm Maven: Drivine KSP codegen + package the runnable JVM jar.
 #    Packaging (~300MB jar + ~/.m2) is what makes Guide start fast on later boots
