@@ -7,12 +7,13 @@ Paired research: orchestrator Work ID
 `SPIKE-003-embabel-context-graph-absorption`
 (branch `cursor/embabel-context-graph-research-65ca`).
 
-## Current posture (2026-08-07)
+## Current posture (2026-08-08)
 
 | Home | Contents |
 |------|----------|
-| `jmjava/guide` pin `sdlc-spdd-projection-v1` (`a6e3246`) | SPIKE-001 package: `com.embabel.guide.spdd`, git-incremental ingest, ops hardening |
-| `jmjava/guide` tip (`main`) | Pin + this absorption doc + Cloud Agent dual-repo env (Guide + orchestrator) |
+| `jmjava/guide` pin `sdlc-spdd-projection-v2` (`28bdb5d`) | SPIKE-001 package + lean/legacy context-index dual-read ([PR #7](https://github.com/jmjava/guide/pull/7)); supersedes `sdlc-spdd-projection-v1` |
+| `jmjava/guide` tip (`main`) | Pin contents + absorption doc + Cloud Agent dual-repo env |
+| Layer B candidate branch | `cursor/feat-013-layer-b-upstream-f564` — clean rebase onto `embabel/guide` `main` (no `com.embabel.guide.spdd`) |
 | `embabel/guide` `main` | Baseline Guide without SPDD projection or git-incremental directory ingest |
 
 **Recommendation (Accepted 2026-08-07):** keep the SPDD context-graph package on
@@ -20,8 +21,14 @@ this fork; treat **git-incremental directory ingest + RAG maintenance** as the
 first upstreamable slice; do **not** upstream `spdd_*` as Embabel’s native
 domain-graph API. Cloud Agent / dual-repo `.cursor/*` env files stay fork-local.
 
-Follow-on Work ID: orchestrator
-`FEAT-013-guide-git-incremental-upstream` (Layer B → draft PR to `embabel/guide`).
+### FEAT-013 status
+
+- **T02/T03:** Layer B branch prepared and tests green on
+  `cursor/feat-013-layer-b-upstream-f564` (see `docs/git-incremental-ingestion.md` on that branch).
+- **T04 upstream PR:** **blocked** by fork-only rule
+  (`.cursor/rules/no-embabel-upstream.mdc`) — this fork must not open PRs to
+  `embabel/guide` unless a human explicitly reverses that rule in-session.
+  Candidate branch remains on `jmjava/guide` for hand-off or rule reversal.
 
 ## Absorption candidates
 
