@@ -300,6 +300,63 @@ class SpddMarkdownProjectionServiceTest {
     return root
   }
 
+  @Test
+  fun `load prefers lean spdd memory context-index when legacy absent`() {
+    val root = tempDir.resolve("lean-only")
+    Files.createDirectories(root.resolve("spdd/canvas"))
+    Files.createDirectories(root.resolve("spdd/memory"))
+    Files.writeString(root.resolve("spdd/canvas/SPIKE-FIX-001-retrieval-fixture.md"), CANVAS)
+    Files.writeString(
+      root.resolve("spdd/memory/context-index.md"),
+      """
+        # Context Index
+
+        | Area | Kind | Work ID | Phase | Timestamp | Source | Entry |
+        |------|------|---------|-------|-----------|--------|-------|
+        | src/billing | decision | SPIKE-FIX-001-retrieval-fixture | code | 2026-07-05T13:00:00Z | adr.md | lean index decision |
+      """.trimIndent(),
+    )
+    val service = service(inMemoryRepository(), root.toString())
+    val result = service.load()
+    assertEquals(1, result.decisions)
+    val subgraph = service.subgraphForWorkId("SPIKE-FIX-001-retrieval-fixture")
+    assertEquals(listOf("lean index decision"), subgraph.decisions.map { it.name })
+  }
+
+  @Test
+  fun `load merges lean and legacy context indexes without duplicating lessons`() {
+    val root = tempDir.resolve("dual-index")
+    Files.createDirectories(root.resolve("spdd/canvas"))
+    Files.createDirectories(root.resolve("spdd/memory"))
+    Files.createDirectories(root.resolve("agent-context/memory"))
+    Files.writeString(root.resolve("spdd/canvas/SPIKE-FIX-001-retrieval-fixture.md"), CANVAS)
+    val sharedRow =
+      "| src/billing | decision | SPIKE-FIX-001-retrieval-fixture | code | 2026-07-05T13:00:00Z | adr.md | shared decision |"
+    val leanOnly =
+      "| src/billing | pitfall | SPIKE-FIX-001-retrieval-fixture | code | 2026-07-05T13:00:00Z | p.md | lean pitfall |"
+    val legacyOnly =
+      "| src/billing | pattern | SPIKE-FIX-001-retrieval-fixture | code | 2026-07-05T13:00:00Z | pat.md | legacy pattern |"
+    val header = """
+      # Context Index
+
+      | Area | Kind | Work ID | Phase | Timestamp | Source | Entry |
+      |------|------|---------|-------|-----------|--------|-------|
+    """.trimIndent()
+    Files.writeString(
+      root.resolve("spdd/memory/context-index.md"),
+      "$header\n$sharedRow\n$leanOnly\n",
+    )
+    Files.writeString(
+      root.resolve("agent-context/memory/context-index.md"),
+      "$header\n$sharedRow\n$legacyOnly\n",
+    )
+    val service = service(inMemoryRepository(), root.toString())
+    val result = service.load()
+    assertEquals(1, result.decisions)
+    assertEquals(1, result.pitfalls)
+    assertEquals(1, result.patterns)
+  }
+
   private fun inMemoryRepository(): NamedEntityDataRepository {
     val embeddingService = Mockito.mock(EmbeddingService::class.java)
     Mockito.`when`(embeddingService.embed(Mockito.anyString())).thenReturn(floatArrayOf(0.1f, 0.2f, 0.3f))

@@ -75,9 +75,18 @@ class SpddMarkdownProjectionService(
             }
         }
 
-        val contextIndex = root.resolve("agent-context/memory/context-index.md")
-        if (Files.isRegularFile(contextIndex)) {
-            val r = runCatching { projectContextIndex(root, contextIndex) }
+        // Prefer lean stay-set index; fall back / merge legacy agent-context index (#89).
+        val contextIndexes = listOf(
+            root.resolve("spdd/memory/context-index.md"),
+            root.resolve("agent-context/memory/context-index.md"),
+        ).filter { Files.isRegularFile(it) }
+        val seenAreas = mutableSetOf<String>()
+        val seenLessons = mutableSetOf<String>()
+        if (contextIndexes.isEmpty()) {
+            log.debug("SPDD projection: no context-index.md under spdd/memory or agent-context/memory")
+        }
+        for (contextIndex in contextIndexes) {
+            val r = runCatching { projectContextIndex(root, contextIndex, seenAreas, seenLessons) }
                 .onFailure { log.warn("SPDD projection: skipping context index {}: {}", contextIndex, it.message) }
                 .getOrNull()
             if (r == null) {
@@ -253,14 +262,18 @@ class SpddMarkdownProjectionService(
         return PartialResult(workIds = 1, canvases = 1, operations = 0, relationships = 1)
     }
 
-    private fun projectContextIndex(root: Path, indexPath: Path): PartialResult {
+    private fun projectContextIndex(
+        root: Path,
+        indexPath: Path,
+        seenAreas: MutableSet<String> = mutableSetOf(),
+        seenLessons: MutableSet<String> = mutableSetOf(),
+    ): PartialResult {
         val lines = Files.readAllLines(indexPath)
         var areas = 0
         var decisions = 0
         var pitfalls = 0
         var patterns = 0
         var rels = 0
-        val seenAreas = mutableSetOf<String>()
 
         for (line in lines) {
             if (!line.startsWith("|") || line.contains("Area | Kind") || line.matches(Regex("^\\|[-| ]+\\|$"))) {
@@ -292,8 +305,12 @@ class SpddMarkdownProjectionService(
 
             val lessonLabel = LESSON_KIND_LABELS[kind] ?: continue
             val relName = kind // decision / pitfall / pattern — matches REL_* constants
+            val lessonId = "$kind:$workId:$area:${cols[5]}"
+            if (!seenLessons.add(lessonId)) {
+                continue
+            }
             val lesson = saveEntity(
-                id = "$kind:$workId:$area:${cols[5]}",
+                id = lessonId,
                 uri = indexPath.toUri().toString() + "#$workId-$kind",
                 name = cols.getOrElse(6) { kind },
                 description = cols.getOrElse(6) { kind },
