@@ -166,6 +166,16 @@ echo "Watch application logs for ingestion progress."
 echo "Press Ctrl+C to stop."
 echo ""
 
+# Prefer the packaged Spring Boot jar when present (Cloud Agent env install
+# prebuilds target/guide-*-SNAPSHOT.jar). Fall back to mvnw spring-boot:run.
+# Force Maven: GUIDE_USE_MVN=1
+JAR="$(ls -1 target/guide-*-SNAPSHOT.jar 2>/dev/null | head -n1 || true)"
+SPRING_ARGS=(--spring.config.additional-location=file:./scripts/user-config/)
+if [ -n "$JAR" ] && ! truthy "${GUIDE_USE_MVN:-}"; then
+  echo "Launching packaged JVM: $JAR"
+  exec java -jar "$JAR" "${SPRING_ARGS[@]}"
+fi
+
 # Run in foreground so Ctrl+C kills it directly
 # Include scripts/user-config/ so Spring Boot finds personal profile files
-./mvnw -DskipTests spring-boot:run -Dspring-boot.run.arguments="--spring.config.additional-location=file:./scripts/user-config/"
+./mvnw -DskipTests spring-boot:run -Dspring-boot.run.arguments="${SPRING_ARGS[*]}"

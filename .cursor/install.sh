@@ -33,11 +33,31 @@ bash "$REPO_ROOT/scripts/start-native-neo4j.sh" \
 if [[ -x /opt/neo4j/bin/neo4j ]]; then
   /opt/neo4j/bin/neo4j stop 2>/dev/null || true
 fi
+# Do not bake a warm Neo4j store into the environment snapshot. Interrupted
+# vector-index checkpoints fail recovery on the next boot; start.sh recreates
+# a clean store under /opt/neo4j when needed. Re-apply the initial password so
+# a bare `neo4j start` (or start.sh) still authenticates as neo4j/brahmsian.
+if [[ -x /opt/neo4j/bin/neo4j ]]; then
+  rm -rf /opt/neo4j/data /opt/neo4j/run
+  mkdir -p /opt/neo4j/data /opt/neo4j/run
+  /opt/neo4j/bin/neo4j-admin dbms set-initial-password \
+    "${NEO4J_PASSWORD:-brahmsian}" 2>/dev/null || true
+fi
 
-# 4. Warm Maven: Drivine KSP codegen + compile.
+# 4. Warm Maven: Drivine KSP codegen + package the runnable JVM jar.
+#    Packaging (~300MB jar + ~/.m2) is what makes Guide start fast on later boots
+#    from an environment build/snapshot. Prefer package over compile-only.
 export JAVA_HOME="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")}"
+export ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-${ANTHROPIC_API_KEY_INGEST_PLACEHOLDER:-dummy-key}}"
 echo "Using JAVA_HOME=$JAVA_HOME"
-./mvnw -B -U compile test-compile
+./mvnw -B -DskipTests package
+JAR="$(ls -1 "$REPO_ROOT"/target/guide-*-SNAPSHOT.jar 2>/dev/null | head -n1 || true)"
+if [[ -n "$JAR" ]]; then
+  echo "Packaged Guide JVM artifact: $JAR ($(du -h "$JAR" | awk '{print $1}'))"
+else
+  echo "ERROR: Guide package did not produce target/guide-*-SNAPSHOT.jar" >&2
+  exit 1
+fi
 
 # 5. Pre-pull Neo4j image when Docker can actually run containers (best effort).
 if timeout 10s sudo docker info >/dev/null 2>&1 \

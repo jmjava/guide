@@ -5,8 +5,8 @@
   "terminals": [
     {
       "name": "guide-app",
-      "description": "Embabel Guide Spring Boot app (chat + MCP on :1337, or :21337 for research). Waits for Neo4j HTTP :7474, then runs ./mvnw spring-boot:run with SPDD projection enabled against the dual-repo orchestrator checkout when present.",
-      "command": "cd /agent/repos/guide && export JAVA_HOME=\"${JAVA_HOME:-$(dirname \"$(dirname \"$(readlink -f \"$(command -v java)\")\")\")}\" && echo 'Waiting for Neo4j on :7474...' && until curl -sf -o /dev/null http://localhost:7474; do sleep 3; done && if [ -d /agent/repos/sdlc-spdd-orchestrator ]; then mkdir -p scripts/user-config && cat > scripts/user-config/application-spdd-dev.yml <<'YAML'\nguide:\n  reload-content-on-startup: false\n  spdd-projection:\n    enabled: true\n    default-root-path: /agent/repos/sdlc-spdd-orchestrator\n    allowed-roots:\n      - /agent/repos/sdlc-spdd-orchestrator\n  directories: []\n  git-ingestion:\n    enabled: false\nspring:\n  neo4j:\n    uri: bolt://localhost:7687\n    authentication:\n      username: neo4j\n      password: brahmsian\nYAML\n export GUIDE_PROFILE=spdd-dev SPRING_PROFILES_ACTIVE=neo4j,local,spdd-dev NEO4J_URI=bolt://localhost:7687 NEO4J_USERNAME=neo4j NEO4J_PASSWORD=brahmsian; ./mvnw -DskipTests spring-boot:run -Dspring-boot.run.arguments=\"--spring.config.additional-location=file:./scripts/user-config/\"; else export SPRING_PROFILES_ACTIVE=neo4j,local NEO4J_URI=bolt://localhost:7687 NEO4J_USERNAME=neo4j NEO4J_PASSWORD=brahmsian; ./mvnw -DskipTests spring-boot:run; fi"
+      "description": "Embabel Guide Spring Boot app (chat + MCP on :1337, or :21337 for research). Waits for Neo4j HTTP :7474, then prefers the fat jar from install (java -jar) with SPDD projection against the dual-repo orchestrator checkout when present. Set GUIDE_USE_MVN=1 to force Maven.",
+      "command": "bash /agent/repos/guide/.cursor/run-guide-app.sh"
     }
   ],
   "ports": [
