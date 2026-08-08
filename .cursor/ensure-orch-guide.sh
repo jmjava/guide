@@ -33,13 +33,13 @@ mkdir -p "$(dirname "${ORCH_HOME}")"
 
 if [[ ! -d "${ORCH_HOME}/.git" ]]; then
   echo "Cloning ${ORCH_URL} (${ORCH_REF}) → ${ORCH_HOME}" >&2
-  git clone --branch "${ORCH_REF}" "${ORCH_URL}" "${ORCH_HOME}"
+  git clone --branch "${ORCH_REF}" "${ORCH_URL}" "${ORCH_HOME}" >&2
 else
   echo "Updating ${ORCH_HOME} (${ORCH_REF})" >&2
-  git -C "${ORCH_HOME}" fetch origin "${ORCH_REF}"
-  git -C "${ORCH_HOME}" checkout "${ORCH_REF}"
-  git -C "${ORCH_HOME}" pull --ff-only origin "${ORCH_REF}" 2>/dev/null || \
-    git -C "${ORCH_HOME}" reset --hard "origin/${ORCH_REF}"
+  git -C "${ORCH_HOME}" fetch origin "${ORCH_REF}" >&2
+  git -C "${ORCH_HOME}" checkout "${ORCH_REF}" >&2
+  git -C "${ORCH_HOME}" pull --ff-only origin "${ORCH_REF}" >&2 2>/dev/null || \
+    git -C "${ORCH_HOME}" reset --hard "origin/${ORCH_REF}" >&2
 fi
 
 if grep -q 'ensure-orch-guide' "${ORCH_HOME}/.cursor/install.sh" 2>/dev/null; then
