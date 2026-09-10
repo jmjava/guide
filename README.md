@@ -12,6 +12,23 @@ as documentation, relevant blogs and other content, and up-to-the-minute API inf
 This repository is the backend for [Embabel Hub](https://hub.embabel.com) — the Guide powers the
 natural-language "Talk to the Docs" experience there.
 
+## Fork-only (`jmjava/guide`)
+
+This tree is **fork-only forever** relative to
+[`embabel/guide`](https://github.com/embabel/guide). Do **not** open a PR, push,
+or set a push URL to `github.com/embabel/guide`. Fetch Embabel **in**
+(`git fetch` / merge into this fork) is allowed. Open PRs only against
+[`jmjava/guide`](https://github.com/jmjava/guide).
+
+The current SPDD/dogfood pin is tag **`spdd-projection-v3`** on
+[`jmjava/orch-guide`](https://github.com/jmjava/orch-guide). It does **not**
+live here. This fork keeps **historical v1/v2** tags only
+(`sdlc-spdd-projection-v1`, `sdlc-spdd-projection-v2`). Do not port v3 onto
+this tree for “parity.”
+
+See [`docs/spdd-upstream-absorption.md`](docs/spdd-upstream-absorption.md)
+and [`docs/spdd-projection-ingest.md`](docs/spdd-projection-ingest.md).
+
 ## Links
 
 - [Embabel Hub](https://hub.embabel.com) — talk to the docs, powered by this Guide
