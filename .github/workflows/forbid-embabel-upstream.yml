@@ -38,6 +38,13 @@ jobs:
           grep -qiE 'fork-local' docs/cloud-agent-env.md
           grep -qiE 'not.{0,40}(an )?Embabel contribution queue' docs/cloud-agent-env.md
           grep -qiE 'fork-only forever' docs/cloud-agent-env.md
+      - name: Absorption doc is not a merge request
+        run: |
+          # Leftover #7: no leftover may ask to upstream.
+          # Deleting the doc or rewriting it as an Embabel MR is CI-red.
+          test -f docs/spdd-upstream-absorption.md
+          grep -qiE 'not a merge request' docs/spdd-upstream-absorption.md
+          grep -qiE 'No leftover may ask to upstream' docs/spdd-upstream-absorption.md
       - name: Clone without hook must still fail
         run: |
           # Leftover #9: CI does not install the pre-push hook.
@@ -61,6 +68,8 @@ jobs:
           # the assert (job stays red).
           # Leftover #6: Cloud-agent env notes must stay fork-local; treating
           # them as an Embabel contribution queue keeps this job red.
+          # Leftover #7: absorption doc is not a merge request; a leftover
+          # that asks to upstream keeps this job red.
           # Leftover #9: hook install must keep the forbid script; a clone
           # without the hook still fails here (job stays red).
           ./scripts/forbid-embabel-upstream-assert.sh
