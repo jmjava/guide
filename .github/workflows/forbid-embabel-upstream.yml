@@ -30,6 +30,14 @@ jobs:
           awk 'BEGIN{p=0} /^---[[:space:]]*$/{p++; next} p==1{print}' \
             .cursor/rules/no-embabel-upstream.mdc \
             | grep -qE '^[[:space:]]*alwaysApply:[[:space:]]*true[[:space:]]*$'
+      - name: Cloud-agent env notes must stay fork-local
+        run: |
+          # Leftover #6: do not treat as an Embabel contribution queue.
+          # Deleting the notes or rewriting them as an Embabel PR path is CI-red.
+          test -f docs/cloud-agent-env.md
+          grep -qiE 'fork-local' docs/cloud-agent-env.md
+          grep -qiE 'not.{0,40}(an )?Embabel contribution queue' docs/cloud-agent-env.md
+          grep -qiE 'fork-only forever' docs/cloud-agent-env.md
       - name: Clone without hook must still fail
         run: |
           # Leftover #9: CI does not install the pre-push hook.
@@ -51,6 +59,8 @@ jobs:
           # Leftover #4: --pre-push to embabel/guide.git must fail.
           # Leftover #8: missing rule / dropped alwaysApply is proven inside
           # the assert (job stays red).
+          # Leftover #6: Cloud-agent env notes must stay fork-local; treating
+          # them as an Embabel contribution queue keeps this job red.
           # Leftover #9: hook install must keep the forbid script; a clone
           # without the hook still fails here (job stays red).
           ./scripts/forbid-embabel-upstream-assert.sh

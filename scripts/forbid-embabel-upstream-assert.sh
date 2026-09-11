@@ -58,12 +58,15 @@ echo "negative check OK"
 
 echo "== proving: sabotage URL keeps the job red =="
 sabotage_tree="$(mktemp -d)"
-mkdir -p "${sabotage_tree}/scripts" "${sabotage_tree}/.cursor/rules"
+mkdir -p "${sabotage_tree}/scripts" "${sabotage_tree}/.cursor/rules" \
+  "${sabotage_tree}/docs"
 git init -q "${sabotage_tree}"
 git -C "${sabotage_tree}" remote add origin https://github.com/jmjava/guide.git
-# Keep the leftover #8 Cursor rule so this case isolates URL-matcher sabotage.
+# Keep leftover #8 / #6 docs so this case isolates URL-matcher sabotage.
 cp "${ROOT}/.cursor/rules/no-embabel-upstream.mdc" \
   "${sabotage_tree}/.cursor/rules/no-embabel-upstream.mdc"
+cp "${ROOT}/docs/cloud-agent-env.md" \
+  "${sabotage_tree}/docs/cloud-agent-env.md"
 sabotaged="${sabotage_tree}/scripts/forbid-embabel-upstream.sh"
 cp "${SCRIPT}" "${sabotaged}"
 chmod +x "${sabotaged}"
@@ -354,11 +357,12 @@ echo "== proving: clone-without-hook-still-fails-in-ci =="
 # Fresh clone: even if .githooks exists in git, core.hooksPath is unset so
 # Git will not run the hook. CI must still fail via the forbid script.
 clone_tree="$(mktemp -d)"
-mkdir -p "${clone_tree}/scripts" "${clone_tree}/.cursor/rules"
+mkdir -p "${clone_tree}/scripts" "${clone_tree}/.cursor/rules" "${clone_tree}/docs"
 git init -q "${clone_tree}"
 git -C "${clone_tree}" remote add origin https://github.com/jmjava/guide.git
 cp "${SCRIPT}" "${clone_tree}/scripts/forbid-embabel-upstream.sh"
 cp "${RULE}" "${clone_tree}/.cursor/rules/no-embabel-upstream.mdc"
+cp "${ROOT}/docs/cloud-agent-env.md" "${clone_tree}/docs/cloud-agent-env.md"
 chmod +x "${clone_tree}/scripts/forbid-embabel-upstream.sh"
 [[ ! -e "${clone_tree}/.githooks" ]] || fail "clone fixture must not have .githooks"
 [[ ! -e "${clone_tree}/.git/hooks/pre-push" ]] || fail "clone fixture must not have installed hook"
@@ -422,5 +426,88 @@ if ! grep -q 'clone-without-hook-still-fails-in-ci' \
   fail "assert must keep the hook-less clone CI case"
 fi
 echo "sabotaged installer overwrite keeps the job red OK"
+
+# Leftover #6: Cloud-agent env notes must stay fork-local.
+# Do not treat as an Embabel contribution queue. Deleting the notes or
+# rewriting them as an Embabel PR path must be visible (CI red).
+echo "== proving: cloud-agent-env-fork-local =="
+ENV_NOTES="${ROOT}/docs/cloud-agent-env.md"
+[[ -f "${ENV_NOTES}" ]] || fail "missing ${ENV_NOTES}"
+grep -qiE 'fork-local' "${ENV_NOTES}" \
+  || fail "cloud-agent-env.md must stay fork-local"
+grep -qiE 'not.{0,40}(an )?Embabel contribution queue' "${ENV_NOTES}" \
+  || fail "cloud-agent-env.md must not be treated as an Embabel contribution queue"
+grep -qiE 'fork-only forever' "${ENV_NOTES}" \
+  || fail "cloud-agent-env.md must stay fork-only forever"
+if ! grep -q 'check_cloud_agent_env_fork_local' "${SCRIPT}"; then
+  fail "forbid script must check Cloud Agent env notes (mechanical guard)"
+fi
+if ! grep -q 'FORBID_CLOUD_AGENT_ENV' "${SCRIPT}"; then
+  fail "forbid script must honor FORBID_CLOUD_AGENT_ENV so deletion can be proven"
+fi
+if ! grep -q 'Cloud-agent env notes must stay fork-local' "${WF}"; then
+  fail "workflow must name the fork-local env step so deletion is visible in review"
+fi
+if ! grep -q 'not.{0,40}(an )?Embabel contribution queue' "${WF}"; then
+  fail "workflow must grep the contribution-queue sentinel (body mention is not enough)"
+fi
+if grep -q 'continue-on-error' "${WF}"; then
+  fail "forbid job must not continue-on-error (missing env notes would stay green)"
+fi
+echo "cloud-agent-env-fork-local OK"
+
+echo "== proving: deleting cloud-agent env notes keeps the job red =="
+expect_fail "missing cloud-agent env notes" \
+  env FORBID_CLOUD_AGENT_ENV=/tmp/does-not-exist-cloud-agent-env.md \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'FORBIDDEN: missing Cloud Agent env notes' /tmp/forbid-assert-err.txt; then
+  fail "missing env notes must print FORBIDDEN about missing Cloud Agent env notes"
+fi
+gone_env_dir="$(mktemp -d)"
+gone_env="${gone_env_dir}/cloud-agent-env.md"
+expect_fail "deleted cloud-agent env notes" \
+  env FORBID_CLOUD_AGENT_ENV="${gone_env}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+echo "deleting cloud-agent env notes keeps the job red OK"
+
+echo "== proving: do-not-treat-as-embabel-contribution-queue =="
+dropped_fork="$(mktemp)"
+cp "${ENV_NOTES}" "${dropped_fork}"
+sed -i 's/fork-local/fork only/g' "${dropped_fork}"
+expect_fail "fork-local dropped" \
+  env FORBID_CLOUD_AGENT_ENV="${dropped_fork}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'fork-local' /tmp/forbid-assert-err.txt; then
+  fail "dropping fork-local must mention the fork-local requirement"
+fi
+dropped_queue="$(mktemp)"
+cp "${ENV_NOTES}" "${dropped_queue}"
+sed -i '/contribution queue/d' "${dropped_queue}"
+expect_fail "contribution-queue sentinel dropped" \
+  env FORBID_CLOUD_AGENT_ENV="${dropped_queue}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'Embabel contribution queue' /tmp/forbid-assert-err.txt; then
+  fail "dropping the contribution-queue sentinel must mention Embabel contribution queue"
+fi
+queue_doc="$(mktemp)"
+cat >"${queue_doc}" <<'EOF'
+# Cloud Agent env — contribute this to Embabel
+
+These notes are ready to upstream.
+Open a PR against embabel/guide with this Cloud Agent env.
+This is an Embabel contribution queue.
+EOF
+expect_fail "cloud-agent env as contribution queue" \
+  env FORBID_CLOUD_AGENT_ENV="${queue_doc}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'FORBIDDEN:' /tmp/forbid-assert-err.txt; then
+  fail "contribution-queue rewrite must print FORBIDDEN"
+fi
+mixed_doc="$(mktemp)"
+cat >"${mixed_doc}" <<'EOF'
+These notes are fork-local.
+Do not treat this file as an Embabel contribution queue.
+This tree is fork-only forever.
+Open a PR against embabel/guide with these env notes.
+EOF
+expect_fail "invitation line keeps the job red" \
+  env FORBID_CLOUD_AGENT_ENV="${mixed_doc}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+echo "do-not-treat-as-embabel-contribution-queue OK"
 
 echo "OK: forbid-embabel-upstream assertions passed"
