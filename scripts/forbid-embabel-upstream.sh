@@ -11,6 +11,7 @@
 # DISABLED). It does not rewrite fetch URLs or the GitHub CLI default repo.
 # FORBID_GIT_ROOT overrides the repo the git remotes are read from (CI).
 # FORBID_GH_DEFAULT overrides the resolved gh nameWithOwner (tests).
+# FORBID_CURSOR_RULE overrides the Cursor rule path (tests).
 set -euo pipefail
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -169,6 +170,30 @@ check_gh_default_repo() {
 }
 
 check_gh_default_repo
+
+# Leftover #8: Cursor rule + mechanical guard must stay alwaysApply.
+# Deleting the rule or dropping front-matter alwaysApply must fail-closed
+# (CI red, visible in review — not silent). Body mentions of alwaysApply
+# do not count. FORBID_CURSOR_RULE overrides the path (tests).
+CURSOR_RULE="${FORBID_CURSOR_RULE:-${SCRIPT_ROOT}/.cursor/rules/no-embabel-upstream.mdc}"
+
+check_cursor_rule_always_apply() {
+  if [[ ! -f "${CURSOR_RULE}" ]]; then
+    echo "FORBIDDEN: missing Cursor rule ${CURSOR_RULE}" >&2
+    echo "Deleting .cursor/rules/no-embabel-upstream.mdc must stay visible (CI red)." >&2
+    failures=1
+    return 0
+  fi
+  local fm
+  fm="$(awk 'BEGIN{p=0} /^---[[:space:]]*$/{p++; next} p==1{print}' "${CURSOR_RULE}")"
+  if ! printf '%s\n' "${fm}" | grep -qE '^[[:space:]]*alwaysApply:[[:space:]]*true[[:space:]]*$'; then
+    echo "FORBIDDEN: ${CURSOR_RULE} must set alwaysApply: true in front matter." >&2
+    echo "Dropping alwaysApply must stay visible (CI red)." >&2
+    failures=1
+  fi
+}
+
+check_cursor_rule_always_apply
 
 if (( failures )); then
   exit 1

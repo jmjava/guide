@@ -58,9 +58,12 @@ echo "negative check OK"
 
 echo "== proving: sabotage URL keeps the job red =="
 sabotage_tree="$(mktemp -d)"
-mkdir -p "${sabotage_tree}/scripts"
+mkdir -p "${sabotage_tree}/scripts" "${sabotage_tree}/.cursor/rules"
 git init -q "${sabotage_tree}"
 git -C "${sabotage_tree}" remote add origin https://github.com/jmjava/guide.git
+# Keep the leftover #8 Cursor rule so this case isolates URL-matcher sabotage.
+cp "${ROOT}/.cursor/rules/no-embabel-upstream.mdc" \
+  "${sabotage_tree}/.cursor/rules/no-embabel-upstream.mdc"
 sabotaged="${sabotage_tree}/scripts/forbid-embabel-upstream.sh"
 cp "${SCRIPT}" "${sabotaged}"
 chmod +x "${sabotaged}"
@@ -231,5 +234,70 @@ if ! grep -q "if: github.repository == 'embabel/guide'" "${SEED_WF}"; then
   fail "export-seed.yml must no-op on forks (if: github.repository == 'embabel/guide')"
 fi
 echo "export-seed-fork-guard OK"
+
+# Leftover #8: Cursor rule + mechanical guard must stay alwaysApply.
+# Deleting the rule or dropping alwaysApply must be visible (CI red), not silent.
+echo "== proving: cursor-rule-alwaysApply =="
+RULE="${ROOT}/.cursor/rules/no-embabel-upstream.mdc"
+WF="${ROOT}/.github/workflows/forbid-embabel-upstream.yml"
+[[ -f "${RULE}" ]] || fail "missing ${RULE}"
+rule_fm="$(awk 'BEGIN{p=0} /^---[[:space:]]*$/{p++; next} p==1{print}' "${RULE}")"
+printf '%s\n' "${rule_fm}" | grep -qE '^[[:space:]]*alwaysApply:[[:space:]]*true[[:space:]]*$' \
+  || fail "rule front matter must set alwaysApply: true"
+if ! grep -q 'check_cursor_rule_always_apply' "${SCRIPT}"; then
+  fail "forbid script must check the Cursor rule (mechanical guard)"
+fi
+if ! grep -q 'FORBID_CURSOR_RULE' "${SCRIPT}"; then
+  fail "forbid script must honor FORBID_CURSOR_RULE so deletion can be proven"
+fi
+if ! grep -q 'Cursor rule must stay alwaysApply' "${WF}"; then
+  fail "workflow must name the alwaysApply step so deletion is visible in review"
+fi
+if ! grep -q 'p==1' "${WF}"; then
+  fail "workflow alwaysApply step must parse front matter (body mention is not enough)"
+fi
+if grep -q 'continue-on-error' "${WF}"; then
+  fail "forbid job must not continue-on-error (missing rule would stay green)"
+fi
+echo "cursor-rule-alwaysApply OK"
+
+echo "== proving: deleting the rule keeps the job red =="
+expect_fail "missing cursor rule" \
+  env FORBID_CURSOR_RULE=/tmp/does-not-exist-no-embabel-upstream.mdc \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'FORBIDDEN: missing Cursor rule' /tmp/forbid-assert-err.txt; then
+  fail "missing rule must print FORBIDDEN about missing Cursor rule"
+fi
+gone_dir="$(mktemp -d)"
+gone="${gone_dir}/no-embabel-upstream.mdc"
+expect_fail "deleted cursor rule file" \
+  env FORBID_CURSOR_RULE="${gone}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+echo "deleting the rule keeps the job red OK"
+
+echo "== proving: dropping alwaysApply keeps the job red =="
+dropped="$(mktemp)"
+cp "${RULE}" "${dropped}"
+sed -i 's/^alwaysApply: true/alwaysApply: false/' "${dropped}"
+expect_fail "alwaysApply false" \
+  env FORBID_CURSOR_RULE="${dropped}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'alwaysApply: true' /tmp/forbid-assert-err.txt; then
+  fail "alwaysApply: false must mention the alwaysApply: true requirement"
+fi
+removed="$(mktemp)"
+grep -v '^alwaysApply:' "${RULE}" > "${removed}"
+expect_fail "alwaysApply dropped" \
+  env FORBID_CURSOR_RULE="${removed}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+body_only="$(mktemp)"
+cat >"${body_only}" <<'EOF'
+---
+description: Hard rule — never contribute jmjava/guide changes to embabel/guide.
+globs:
+---
+
+# Body mention of alwaysApply: true must not keep the job green.
+EOF
+expect_fail "alwaysApply only in body" \
+  env FORBID_CURSOR_RULE="${body_only}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+echo "dropping alwaysApply keeps the job red OK"
 
 echo "OK: forbid-embabel-upstream assertions passed"
