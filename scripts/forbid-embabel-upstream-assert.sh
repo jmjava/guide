@@ -56,7 +56,42 @@ case "${fetch_url}" in
   *) fail "expected fetch URL to stay embabel/guide after --fix, got: ${fetch_url}" ;;
 esac
 [[ "${push_url}" == "DISABLED" ]] || fail "expected push URL DISABLED after --fix, got: ${push_url}"
+[[ "${fetch_url}" != "DISABLED" ]] || fail "--fix must not disable fetch URL"
 echo "upstream-equals-fetch --fix OK"
+echo "Fetch stays; push becomes DISABLED"
+
+# Leftover #3 hole: origin fetch is jmjava/guide, push is Embabel. --fix must
+# disable push only (name-restricted --fix used to leave this push URL live).
+tmp_origin="$(mktemp -d)"
+git init -q "${tmp_origin}"
+git -C "${tmp_origin}" remote add origin https://github.com/jmjava/guide.git
+git -C "${tmp_origin}" remote set-url --push origin https://github.com/embabel/guide.git
+expect_fail "origin push embabel" \
+  env FORBID_GIT_ROOT="${tmp_origin}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+expect_ok "origin --fix push-only" \
+  env FORBID_GIT_ROOT="${tmp_origin}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}" --fix
+origin_fetch="$(git -C "${tmp_origin}" remote get-url origin)"
+origin_push="$(git -C "${tmp_origin}" remote get-url --push origin)"
+[[ "${origin_fetch}" == "https://github.com/jmjava/guide.git" ]] \
+  || fail "expected origin fetch to stay jmjava/guide after --fix, got: ${origin_fetch}"
+[[ "${origin_push}" == "DISABLED" ]] \
+  || fail "expected origin push DISABLED after --fix, got: ${origin_push}"
+[[ "${origin_fetch}" != "DISABLED" ]] || fail "--fix must not disable fetch URL"
+echo "origin-jmjava-fetch Embabel-push --fix OK"
+
+# --fix must not rewrite a clean jmjava remote (push-URL disable only).
+tmp_clean="$(mktemp -d)"
+git init -q "${tmp_clean}"
+git -C "${tmp_clean}" remote add origin https://github.com/jmjava/guide.git
+expect_ok "clean origin --fix no-op" \
+  env FORBID_GIT_ROOT="${tmp_clean}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}" --fix
+clean_fetch="$(git -C "${tmp_clean}" remote get-url origin)"
+clean_push="$(git -C "${tmp_clean}" remote get-url --push origin)"
+[[ "${clean_fetch}" == "https://github.com/jmjava/guide.git" ]] \
+  || fail "expected --fix to leave jmjava fetch, got: ${clean_fetch}"
+[[ "${clean_push}" == "https://github.com/jmjava/guide.git" ]] \
+  || fail "expected --fix to leave jmjava push, got: ${clean_push}"
+echo "--fix leaves non-Embabel remotes OK"
 
 expect_fail "GH_REPO=embabel/guide" env GH_REPO=embabel/guide "${SCRIPT}"
 echo "GH_REPO negative check OK"
