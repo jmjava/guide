@@ -21,9 +21,19 @@ jobs:
             exit 1
           fi
           gh --version
+      - name: Cursor rule must stay alwaysApply
+        run: |
+          # Leftover #8: deleting the rule or dropping alwaysApply is CI-red,
+          # not silent. Front matter only — a body mention must not keep this green.
+          chmod +x scripts/forbid-embabel-upstream.sh
+          test -f .cursor/rules/no-embabel-upstream.mdc
+          awk 'BEGIN{p=0} /^---[[:space:]]*$/{p++; next} p==1{print}' \
+            .cursor/rules/no-embabel-upstream.mdc \
+            | grep -qE '^[[:space:]]*alwaysApply:[[:space:]]*true[[:space:]]*$'
       - name: Refuse embabel/guide as a push destination
         run: |
           chmod +x scripts/forbid-embabel-upstream.sh scripts/forbid-embabel-upstream-assert.sh
           # Leftover #4: --pre-push to embabel/guide.git must fail.
-          # Sabotage of that URL check is proven inside the assert (job stays red).
+          # Leftover #8: missing rule / dropped alwaysApply is proven inside
+          # the assert (job stays red).
           ./scripts/forbid-embabel-upstream-assert.sh
