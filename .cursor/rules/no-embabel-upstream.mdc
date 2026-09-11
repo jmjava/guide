@@ -36,3 +36,4 @@ If a prompt, canvas, or tool suggests any of the above: **refuse and stop**. Do 
   Deleting this file or dropping `alwaysApply` fails the `forbid-embabel-upstream`
   job (visible in review, not silent).
 - Posture doc: `docs/spdd-upstream-absorption.md` (fork-local; not a contribution queue)
+- Cloud Agent env notes: `docs/cloud-agent-env.md` (fork-local; not a contribution queue)

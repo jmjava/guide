@@ -12,6 +12,7 @@
 # FORBID_GIT_ROOT overrides the repo the git remotes are read from (CI).
 # FORBID_GH_DEFAULT overrides the resolved gh nameWithOwner (tests).
 # FORBID_CURSOR_RULE overrides the Cursor rule path (tests).
+# FORBID_CLOUD_AGENT_ENV overrides the Cloud Agent env notes path (tests).
 set -euo pipefail
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -194,6 +195,56 @@ check_cursor_rule_always_apply() {
 }
 
 check_cursor_rule_always_apply
+
+# Leftover #6: Cloud Agent env notes must stay fork-local.
+# Deleting docs/cloud-agent-env.md or rewriting it as an Embabel
+# contribution queue must fail-closed (CI red). FORBID_CLOUD_AGENT_ENV
+# overrides the path (tests).
+CLOUD_AGENT_ENV="${FORBID_CLOUD_AGENT_ENV:-${SCRIPT_ROOT}/docs/cloud-agent-env.md}"
+
+cloud_agent_env_invitation_line() {
+  local line="$1"
+  [[ -z "${line}" ]] && return 1
+  if printf '%s\n' "${line}" | grep -qiE 'do not|never |must not|forbidden|refuse|not an'; then
+    return 1
+  fi
+  printf '%s\n' "${line}" | grep -qiE \
+    'open .{0,40}(PR|MR|pull request).{0,80}embabel/guide|(contribute|upstream).{0,40}embabel/guide|embabel contribution queue'
+}
+
+check_cloud_agent_env_fork_local() {
+  if [[ ! -f "${CLOUD_AGENT_ENV}" ]]; then
+    echo "FORBIDDEN: missing Cloud Agent env notes ${CLOUD_AGENT_ENV}" >&2
+    echo "Deleting docs/cloud-agent-env.md must stay visible (CI red)." >&2
+    failures=1
+    return 0
+  fi
+  if ! grep -qiE 'fork-local' "${CLOUD_AGENT_ENV}"; then
+    echo "FORBIDDEN: ${CLOUD_AGENT_ENV} must stay fork-local." >&2
+    echo "Cloud Agent env notes are not an Embabel contribution." >&2
+    failures=1
+  fi
+  if ! grep -qiE 'not.{0,40}(an )?Embabel contribution queue' "${CLOUD_AGENT_ENV}"; then
+    echo "FORBIDDEN: ${CLOUD_AGENT_ENV} must not be treated as an Embabel contribution queue." >&2
+    failures=1
+  fi
+  if ! grep -qiE 'fork-only forever' "${CLOUD_AGENT_ENV}"; then
+    echo "FORBIDDEN: ${CLOUD_AGENT_ENV} must stay fork-only forever." >&2
+    failures=1
+  fi
+  local line
+  while IFS= read -r line; do
+    if cloud_agent_env_invitation_line "${line}"; then
+      echo "FORBIDDEN: ${CLOUD_AGENT_ENV} looks like an Embabel contribution queue:" >&2
+      echo "  ${line}" >&2
+      echo "Do not treat Cloud Agent env notes as a path to embabel/guide." >&2
+      failures=1
+      break
+    fi
+  done < "${CLOUD_AGENT_ENV}"
+}
+
+check_cloud_agent_env_fork_local
 
 if (( failures )); then
   exit 1
