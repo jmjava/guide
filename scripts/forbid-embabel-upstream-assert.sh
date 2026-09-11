@@ -594,4 +594,94 @@ expect_fail "invitation leftover keeps the job red" \
   env FORBID_ABSORPTION_DOC="${mixed_abs}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
 echo "leftover-must-not-ask-to-upstream OK"
 
+# Leftover #10: do not open PRs to embabel/guide (small or large).
+# Any leftover that "cleans a Layer B branch for Embabel" is refused.
+# Leftover #6/#7 docs stay.
+echo "== proving: leftover-that-cleans-layer-b-for-embabel-is-refused =="
+[[ -f "${ENV_NOTES}" ]] || fail "leftover #6 cloud-agent-env.md must stay"
+[[ -f "${ABSORPTION}" ]] || fail "leftover #7 absorption doc must stay"
+grep -qiE 'Do not open PRs to .?embabel/guide.? \(small or large\)' "${ABSORPTION}" \
+  || fail "absorption doc must say do not open PRs to embabel/guide (small or large)"
+grep -qiE 'Any leftover that cleans a Layer B branch for Embabel is refused' "${ABSORPTION}" \
+  || fail "absorption doc must refuse leftover that cleans a Layer B branch for Embabel"
+if ! grep -q 'check_layer_b_embabel_leftover_refused' "${SCRIPT}"; then
+  fail "forbid script must refuse leftover that cleans a Layer B branch for Embabel"
+fi
+if ! grep -q 'FORBID_LEFTOVER_TEXT' "${SCRIPT}"; then
+  fail "forbid script must honor FORBID_LEFTOVER_TEXT so leftover notes can be proven"
+fi
+if ! grep -q -- '--leftover-text' "${SCRIPT}"; then
+  fail "forbid script must accept --leftover-text"
+fi
+if ! grep -q 'Layer B leftover for Embabel is refused' "${WF}"; then
+  fail "workflow must name the Layer B leftover step so deletion is visible in review"
+fi
+if ! grep -q 'Any leftover that cleans a Layer B branch for Embabel is refused' "${WF}"; then
+  fail "workflow must grep the Layer B leftover sentinel (body mention is not enough)"
+fi
+if ! grep -q -- '--leftover-text' "${WF}"; then
+  fail "workflow must invoke --leftover-text so a Layer B leftover keeps the job red"
+fi
+if grep -q 'continue-on-error' "${WF}"; then
+  fail "forbid job must not continue-on-error (Layer B leftover would stay green)"
+fi
+expect_fail "leftover-that-cleans-layer-b-for-embabel-is-refused" \
+  env FORBID_LEFTOVER_TEXT='Clean a Layer B branch for Embabel' \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'FORBIDDEN:' /tmp/forbid-assert-err.txt; then
+  fail "leftover that cleans a Layer B branch for Embabel must print FORBIDDEN"
+fi
+if ! grep -qiE 'Layer B branch for Embabel' /tmp/forbid-assert-err.txt; then
+  fail "leftover that cleans a Layer B branch for Embabel must mention that leftover"
+fi
+expect_fail "leftover-text flag cleans Layer B" \
+  env FORBID_GH_DEFAULT=jmjava/guide \
+      "${SCRIPT}" --leftover-text "cleans a Layer B branch for Embabel"
+expect_ok "fork-only leftover text stays allowed" \
+  env FORBID_LEFTOVER_TEXT='Keep Layer B on the fork; do not open PRs to embabel/guide' \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+expect_ok "refused leftover policy text stays allowed" \
+  env FORBID_LEFTOVER_TEXT='Any leftover that cleans a Layer B branch for Embabel is refused' \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+echo "leftover-that-cleans-layer-b-for-embabel-is-refused OK"
+
+echo "== proving: do-not-open-prs-small-or-large =="
+expect_fail "small PR leftover" \
+  env FORBID_LEFTOVER_TEXT='Open a small PR to embabel/guide' \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+expect_fail "large PR leftover" \
+  env FORBID_LEFTOVER_TEXT='Open a large PR to embabel/guide' \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+dropped_layer_b="$(mktemp)"
+cp "${ABSORPTION}" "${dropped_layer_b}"
+sed -i '/Any leftover that cleans a Layer B branch for Embabel is refused/d' \
+  "${dropped_layer_b}"
+expect_fail "layer-b leftover sentinel dropped" \
+  env FORBID_ABSORPTION_DOC="${dropped_layer_b}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -qiE 'cleans a Layer B branch for Embabel' /tmp/forbid-assert-err.txt; then
+  fail "dropping the Layer B leftover sentinel must mention that leftover"
+fi
+dropped_small_large="$(mktemp)"
+cp "${ABSORPTION}" "${dropped_small_large}"
+sed -i '/small or large/d' "${dropped_small_large}"
+expect_fail "small-or-large sentinel dropped" \
+  env FORBID_ABSORPTION_DOC="${dropped_small_large}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -qiE 'small or large' /tmp/forbid-assert-err.txt; then
+  fail "dropping (small or large) must mention small or large"
+fi
+layer_b_invite="$(mktemp)"
+cat >"${layer_b_invite}" <<'EOF'
+This document is not a merge request.
+No leftover may ask to upstream.
+Do not open PRs to `embabel/guide` (small or large).
+Any leftover that cleans a Layer B branch for Embabel is refused.
+Clean a Layer B branch for Embabel.
+EOF
+expect_fail "layer-b leftover invitation keeps the job red" \
+  env FORBID_ABSORPTION_DOC="${layer_b_invite}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'FORBIDDEN:' /tmp/forbid-assert-err.txt; then
+  fail "leftover that cleans a Layer B branch for Embabel must print FORBIDDEN"
+fi
+echo "do-not-open-prs-small-or-large OK"
+
 echo "OK: forbid-embabel-upstream assertions passed"

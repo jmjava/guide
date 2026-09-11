@@ -45,6 +45,23 @@ jobs:
           test -f docs/spdd-upstream-absorption.md
           grep -qiE 'not a merge request' docs/spdd-upstream-absorption.md
           grep -qiE 'No leftover may ask to upstream' docs/spdd-upstream-absorption.md
+      - name: Layer B leftover for Embabel is refused
+        run: |
+          # Leftover #10: do not open PRs to embabel/guide (small or large).
+          # Any leftover that "cleans a Layer B branch for Embabel" is refused.
+          # Leftover #6/#7 docs stay.
+          chmod +x scripts/forbid-embabel-upstream.sh
+          test -f docs/cloud-agent-env.md
+          test -f docs/spdd-upstream-absorption.md
+          grep -qiE 'Do not open PRs to .embabel/guide. \(small or large\)' \
+            docs/spdd-upstream-absorption.md
+          grep -qiE 'Any leftover that cleans a Layer B branch for Embabel is refused' \
+            docs/spdd-upstream-absorption.md
+          if ./scripts/forbid-embabel-upstream.sh --leftover-text \
+               "Clean a Layer B branch for Embabel"; then
+            echo "expected leftover that cleans a Layer B branch for Embabel to be refused" >&2
+            exit 1
+          fi
       - name: Clone without hook must still fail
         run: |
           # Leftover #9: CI does not install the pre-push hook.
@@ -70,6 +87,8 @@ jobs:
           # them as an Embabel contribution queue keeps this job red.
           # Leftover #7: absorption doc is not a merge request; a leftover
           # that asks to upstream keeps this job red.
+          # Leftover #10: leftover that cleans a Layer B branch for Embabel
+          # is refused (no small or large PR to embabel/guide).
           # Leftover #9: hook install must keep the forbid script; a clone
           # without the hook still fails here (job stays red).
           ./scripts/forbid-embabel-upstream-assert.sh

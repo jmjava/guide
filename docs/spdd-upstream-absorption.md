@@ -54,6 +54,7 @@ env files stay fork-local (real env on orch-guide; thin bridge on `jmjava/guide`
 - Layer B (git-incremental + RAG maintenance) lives on the fork (also isolated on
   branch `cursor/feat-013-layer-b-upstream-f564` for reviewability only).
 - **No Embabel PR** — by policy, not as a temporary blocker.
+- Any leftover that cleans a Layer B branch for Embabel is refused.
 - Work ID closes as **fork-only complete**.
 
 ## What stays on the fork
@@ -82,6 +83,7 @@ git remote set-url --push upstream DISABLED
 ## Explicit non-goals
 
 - Do not open PRs to `embabel/guide` (small or large).
+- Any leftover that cleans a Layer B branch for Embabel is refused.
 - Do not ask humans “should we upstream this?”
 - **No leftover may ask to upstream** — refuse leftover, canvas, or note
   language that treats absorption / Layer B as an Embabel merge request.

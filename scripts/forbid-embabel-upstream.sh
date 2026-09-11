@@ -6,6 +6,7 @@
 #   ./scripts/forbid-embabel-upstream.sh
 #   ./scripts/forbid-embabel-upstream.sh --fix
 #   ./scripts/forbid-embabel-upstream.sh --pre-push <remote-name> <remote-url>
+#   ./scripts/forbid-embabel-upstream.sh --leftover-text "Clean a Layer B branch for Embabel"
 #
 # --fix disables Embabel push URLs on every remote (fetch stays; push becomes
 # DISABLED). It does not rewrite fetch URLs or the GitHub CLI default repo.
@@ -14,6 +15,7 @@
 # FORBID_CURSOR_RULE overrides the Cursor rule path (tests).
 # FORBID_CLOUD_AGENT_ENV overrides the Cloud Agent env notes path (tests).
 # FORBID_ABSORPTION_DOC overrides the absorption posture path (tests).
+# FORBID_LEFTOVER_TEXT leftover note/canvas text (tests; also --leftover-text).
 set -euo pipefail
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,6 +32,9 @@ i=0
 while (( i < ${#args[@]} )); do
   if [[ "${args[i]}" == "--fix" ]]; then
     FIX=1
+  elif [[ "${args[i]}" == "--leftover-text" ]]; then
+    ((++i))
+    FORBID_LEFTOVER_TEXT="${args[i]:-}"
   else
     filtered+=("${args[i]}")
   fi
@@ -292,6 +297,63 @@ check_absorption_doc_not_merge_request() {
 }
 
 check_absorption_doc_not_merge_request
+
+# Leftover #10: do not open PRs to embabel/guide (small or large).
+# Any leftover that "cleans a Layer B branch for Embabel" is refused.
+# Leftover #6/#7 docs stay (cloud-agent-env + absorption). FORBID_LEFTOVER_TEXT
+# / --leftover-text supplies leftover note text (tests).
+layer_b_embabel_leftover_invitation() {
+  local line="$1"
+  [[ -z "${line}" ]] && return 1
+  if printf '%s\n' "${line}" | grep -qiE \
+    'do not|never |must not|forbidden|refuse|is refused|not a merge request'; then
+    return 1
+  fi
+  printf '%s\n' "${line}" | grep -qiE \
+    'clean[[:alnum:][:space:]\"/_-]*[Ll]ayer[[:space:]]*B[[:alnum:][:space:]\"/_-]*[Ee]mbabel|open[[:alnum:][:space:]\"/_-]*(a[[:space:]]+)?(small|large)?[[:alnum:][:space:]\"/_-]*(PRs?|MRs?|pull request)[[:alnum:][:space:]\"/_-]*embabel/guide'
+}
+
+check_layer_b_embabel_leftover_refused() {
+  if [[ ! -f "${ABSORPTION_DOC}" ]]; then
+    echo "FORBIDDEN: missing absorption doc ${ABSORPTION_DOC}" >&2
+    echo "Leftover #7 absorption doc must stay; leftover #10 does not replace it." >&2
+    failures=1
+    return 0
+  fi
+  if [[ ! -f "${CLOUD_AGENT_ENV}" ]]; then
+    echo "FORBIDDEN: missing Cloud Agent env notes ${CLOUD_AGENT_ENV}" >&2
+    echo "Leftover #6 cloud-agent-env notes must stay; leftover #10 does not replace them." >&2
+    failures=1
+  fi
+  if ! grep -qiE 'Do not open PRs to .?embabel/guide.? \(small or large\)' "${ABSORPTION_DOC}"; then
+    echo "FORBIDDEN: ${ABSORPTION_DOC} must say do not open PRs to embabel/guide (small or large)." >&2
+    failures=1
+  fi
+  if ! grep -qiE 'Any leftover that cleans a Layer B branch for Embabel is refused' "${ABSORPTION_DOC}"; then
+    echo "FORBIDDEN: leftover that cleans a Layer B branch for Embabel must be refused." >&2
+    echo "${ABSORPTION_DOC} must keep that leftover #10 sentinel." >&2
+    failures=1
+  fi
+  local leftover="${FORBID_LEFTOVER_TEXT:-}"
+  if [[ -n "${leftover}" ]] && layer_b_embabel_leftover_invitation "${leftover}"; then
+    echo "FORBIDDEN: leftover cleans a Layer B branch for Embabel (or opens a PR to embabel/guide):" >&2
+    echo "  ${leftover}" >&2
+    echo "Do not open PRs to embabel/guide (small or large). Refuse this leftover." >&2
+    failures=1
+  fi
+  local line
+  while IFS= read -r line; do
+    if layer_b_embabel_leftover_invitation "${line}"; then
+      echo "FORBIDDEN: leftover cleans a Layer B branch for Embabel:" >&2
+      echo "  ${line}" >&2
+      echo "Do not open PRs to embabel/guide (small or large). Refuse this leftover." >&2
+      failures=1
+      break
+    fi
+  done < "${ABSORPTION_DOC}"
+}
+
+check_layer_b_embabel_leftover_refused
 
 if (( failures )); then
   exit 1
