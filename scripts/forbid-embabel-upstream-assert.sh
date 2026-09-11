@@ -224,4 +224,12 @@ if grep -q 'SKIP: gh not on PATH' /tmp/forbid-assert-err.txt; then
 fi
 echo "missing gh fail-closed OK"
 
+echo "== proving: export-seed-fork-guard =="
+SEED_WF="${ROOT}/.github/workflows/export-seed.yml"
+[[ -f "${SEED_WF}" ]] || fail "export-seed.yml missing"
+if ! grep -q "if: github.repository == 'embabel/guide'" "${SEED_WF}"; then
+  fail "export-seed.yml must no-op on forks (if: github.repository == 'embabel/guide')"
+fi
+echo "export-seed-fork-guard OK"
+
 echo "OK: forbid-embabel-upstream assertions passed"

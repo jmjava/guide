@@ -5,8 +5,13 @@ on:
   schedule:
     - cron: '0 5 * * *' # Daily at 5am UTC (before hub docs workflow at 6am)
 
+# Fork-only: this job builds a seed and dispatches embabel/embabel-hub.
+# It does not apply on jmjava/guide (no Artifactory, no hub token, must not
+# notify Embabel). A GitHub "disabled" toggle is not enough — keep this if:
+# so a re-enable still no-ops on the fork.
 jobs:
   export-seed:
+    if: github.repository == 'embabel/guide'
     runs-on: ubuntu-latest
 
     services:
