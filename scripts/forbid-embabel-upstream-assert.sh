@@ -38,9 +38,60 @@ expect_ok() {
 # Live clone check (CI origin is jmjava/guide; local remotes may have fetch-only upstream).
 expect_ok "live forbid script" "${SCRIPT}"
 
-expect_fail "pre-push embabel URL" \
+# Leftover #4: --pre-push to embabel/guide.git must fail.
+# Workflow already calls this assert; sabotage of the URL matcher must
+# keep the forbid-embabel-upstream job red.
+echo "== proving: pre-push-url-fails =="
+expect_fail "pre-push-url-fails" \
   "${SCRIPT}" --pre-push evil https://github.com/embabel/guide.git
+if ! grep -q 'FORBIDDEN:' /tmp/forbid-assert-err.txt; then
+  fail "pre-push-url-fails must print FORBIDDEN for https://github.com/embabel/guide.git"
+fi
+expect_fail "pre-push embabel/guide.git short form" \
+  "${SCRIPT}" --pre-push evil embabel/guide.git
+expect_fail "pre-push ssh embabel/guide.git" \
+  "${SCRIPT}" --pre-push evil git@github.com:embabel/guide.git
+expect_fail "pre-push missing URL fail-closed" \
+  "${SCRIPT}" --pre-push evil
+echo "pre-push-url-fails OK"
 echo "negative check OK"
+
+echo "== proving: sabotage URL keeps the job red =="
+sabotage_tree="$(mktemp -d)"
+mkdir -p "${sabotage_tree}/scripts"
+git init -q "${sabotage_tree}"
+git -C "${sabotage_tree}" remote add origin https://github.com/jmjava/guide.git
+sabotaged="${sabotage_tree}/scripts/forbid-embabel-upstream.sh"
+cp "${SCRIPT}" "${sabotaged}"
+chmod +x "${sabotaged}"
+# Neutralize URL matching so --pre-push accepts embabel/guide.git.
+sed -i "s/^FORBIDDEN_RE=.*/FORBIDDEN_RE='^$'/" "${sabotaged}"
+sed -i 's/embabel\/guide|embabel\/guide.git/never-match/' "${sabotaged}"
+# Sabotage worked: the guard now accepts the forbidden push URL.
+expect_ok "sabotaged --pre-push accepts embabel/guide.git" \
+  env FORBID_GH_DEFAULT=jmjava/guide "${sabotaged}" \
+  --pre-push evil https://github.com/embabel/guide.git
+# The live proving assertion (expect --pre-push to fail) would now exit 1.
+if "${sabotaged}" --pre-push evil https://github.com/embabel/guide.git \
+     >/tmp/forbid-sabotage-out.txt 2>/tmp/forbid-sabotage-err.txt; then
+  :
+else
+  fail "sabotage did not neutralize --pre-push; cannot prove the job would go red"
+fi
+# The job stays red because CI still runs this assert, without continue-on-error.
+if ! grep -q -- '--pre-push evil https://github.com/embabel/guide.git' \
+     "${ROOT}/scripts/forbid-embabel-upstream-assert.sh"; then
+  fail "assert must keep the --pre-push sabotage URL case"
+fi
+if ! grep -q 'forbid-embabel-upstream-assert.sh' \
+     "${ROOT}/.github/workflows/forbid-embabel-upstream.yml"; then
+  fail "workflow must invoke the assert so a sabotaged URL keeps the job red"
+fi
+if grep -q 'continue-on-error' \
+     "${ROOT}/.github/workflows/forbid-embabel-upstream.yml"; then
+  fail "forbid job must not continue-on-error (sabotage would stay green)"
+fi
+echo "sabotage URL keeps the job red OK"
 
 # Typical leftover: upstream fetch == push == Embabel. --fix disables push only.
 tmp="$(mktemp -d)"

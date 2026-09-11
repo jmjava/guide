@@ -24,4 +24,6 @@ jobs:
       - name: Refuse embabel/guide as a push destination
         run: |
           chmod +x scripts/forbid-embabel-upstream.sh scripts/forbid-embabel-upstream-assert.sh
+          # Leftover #4: --pre-push to embabel/guide.git must fail.
+          # Sabotage of that URL check is proven inside the assert (job stays red).
           ./scripts/forbid-embabel-upstream-assert.sh
