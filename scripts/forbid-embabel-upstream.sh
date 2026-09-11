@@ -13,6 +13,7 @@
 # FORBID_GH_DEFAULT overrides the resolved gh nameWithOwner (tests).
 # FORBID_CURSOR_RULE overrides the Cursor rule path (tests).
 # FORBID_CLOUD_AGENT_ENV overrides the Cloud Agent env notes path (tests).
+# FORBID_ABSORPTION_DOC overrides the absorption posture path (tests).
 set -euo pipefail
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -245,6 +246,52 @@ check_cloud_agent_env_fork_local() {
 }
 
 check_cloud_agent_env_fork_local
+
+# Leftover #7: absorption doc is not a merge request.
+# Deleting docs/spdd-upstream-absorption.md or rewriting it so a leftover
+# may ask to upstream must fail-closed (CI red). FORBID_ABSORPTION_DOC
+# overrides the path (tests).
+ABSORPTION_DOC="${FORBID_ABSORPTION_DOC:-${SCRIPT_ROOT}/docs/spdd-upstream-absorption.md}"
+
+absorption_invitation_line() {
+  local line="$1"
+  [[ -z "${line}" ]] && return 1
+  if printf '%s\n' "${line}" | grep -qiE \
+    'do not|never |must not|forbidden|refuse|not a|no leftover'; then
+    return 1
+  fi
+  printf '%s\n' "${line}" | grep -qiE \
+    'ask to upstream|should we upstream|ready to upstream|please upstream|this (document|doc|file) is a merge request|open .{0,40}(PR|MR|pull request).{0,80}embabel/guide'
+}
+
+check_absorption_doc_not_merge_request() {
+  if [[ ! -f "${ABSORPTION_DOC}" ]]; then
+    echo "FORBIDDEN: missing absorption doc ${ABSORPTION_DOC}" >&2
+    echo "Deleting docs/spdd-upstream-absorption.md must stay visible (CI red)." >&2
+    failures=1
+    return 0
+  fi
+  if ! grep -qiE 'not a merge request' "${ABSORPTION_DOC}"; then
+    echo "FORBIDDEN: ${ABSORPTION_DOC} must say it is not a merge request." >&2
+    failures=1
+  fi
+  if ! grep -qiE 'No leftover may ask to upstream' "${ABSORPTION_DOC}"; then
+    echo "FORBIDDEN: ${ABSORPTION_DOC} must say no leftover may ask to upstream." >&2
+    failures=1
+  fi
+  local line
+  while IFS= read -r line; do
+    if absorption_invitation_line "${line}"; then
+      echo "FORBIDDEN: ${ABSORPTION_DOC} leftover asks to upstream:" >&2
+      echo "  ${line}" >&2
+      echo "No leftover may ask to upstream. This doc is not a merge request." >&2
+      failures=1
+      break
+    fi
+  done < "${ABSORPTION_DOC}"
+}
+
+check_absorption_doc_not_merge_request
 
 if (( failures )); then
   exit 1

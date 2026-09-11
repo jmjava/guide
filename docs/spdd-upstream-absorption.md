@@ -2,12 +2,16 @@
 
 Audience: agents and humans working on `jmjava/guide` or `jmjava/orch-guide`.
 
+This document is **not a merge request**. It is fork-local posture, not
+a path to `embabel/guide`. **No leftover may ask to upstream.**
+
 Paired research: orchestrator Work ID
 `SPIKE-003-embabel-context-graph-absorption`.
 
 ## Hard rule
 
 **Never ask Embabel to merge.** Never open a PR/MR against `embabel/guide`.
+Do not ask to upstream. Do not treat this file as a merge request.
 
 **Durable home:** SPDD/dogfood Guide work lives on standalone
 **[`jmjava/orch-guide`](https://github.com/jmjava/orch-guide)**.
@@ -79,5 +83,7 @@ git remote set-url --push upstream DISABLED
 
 - Do not open PRs to `embabel/guide` (small or large).
 - Do not ask humans “should we upstream this?”
+- **No leftover may ask to upstream** — refuse leftover, canvas, or note
+  language that treats absorption / Layer B as an Embabel merge request.
 - Do not force SPDD conventions into Embabel defaults via contribution.
 - Do not collapse this work into local-LLM / embedding-format experiments.

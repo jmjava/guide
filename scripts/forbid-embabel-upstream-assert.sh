@@ -62,11 +62,13 @@ mkdir -p "${sabotage_tree}/scripts" "${sabotage_tree}/.cursor/rules" \
   "${sabotage_tree}/docs"
 git init -q "${sabotage_tree}"
 git -C "${sabotage_tree}" remote add origin https://github.com/jmjava/guide.git
-# Keep leftover #8 / #6 docs so this case isolates URL-matcher sabotage.
+# Keep leftover #8 / #6 / #7 docs so this case isolates URL-matcher sabotage.
 cp "${ROOT}/.cursor/rules/no-embabel-upstream.mdc" \
   "${sabotage_tree}/.cursor/rules/no-embabel-upstream.mdc"
 cp "${ROOT}/docs/cloud-agent-env.md" \
   "${sabotage_tree}/docs/cloud-agent-env.md"
+cp "${ROOT}/docs/spdd-upstream-absorption.md" \
+  "${sabotage_tree}/docs/spdd-upstream-absorption.md"
 sabotaged="${sabotage_tree}/scripts/forbid-embabel-upstream.sh"
 cp "${SCRIPT}" "${sabotaged}"
 chmod +x "${sabotaged}"
@@ -363,6 +365,8 @@ git -C "${clone_tree}" remote add origin https://github.com/jmjava/guide.git
 cp "${SCRIPT}" "${clone_tree}/scripts/forbid-embabel-upstream.sh"
 cp "${RULE}" "${clone_tree}/.cursor/rules/no-embabel-upstream.mdc"
 cp "${ROOT}/docs/cloud-agent-env.md" "${clone_tree}/docs/cloud-agent-env.md"
+cp "${ROOT}/docs/spdd-upstream-absorption.md" \
+  "${clone_tree}/docs/spdd-upstream-absorption.md"
 chmod +x "${clone_tree}/scripts/forbid-embabel-upstream.sh"
 [[ ! -e "${clone_tree}/.githooks" ]] || fail "clone fixture must not have .githooks"
 [[ ! -e "${clone_tree}/.git/hooks/pre-push" ]] || fail "clone fixture must not have installed hook"
@@ -509,5 +513,85 @@ EOF
 expect_fail "invitation line keeps the job red" \
   env FORBID_CLOUD_AGENT_ENV="${mixed_doc}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
 echo "do-not-treat-as-embabel-contribution-queue OK"
+
+# Leftover #7: absorption doc is not a merge request.
+# No leftover may ask to upstream. Deleting the doc or rewriting it as
+# an Embabel merge request must be visible (CI red).
+echo "== proving: absorption-doc-not-a-merge-request =="
+ABSORPTION="${ROOT}/docs/spdd-upstream-absorption.md"
+[[ -f "${ABSORPTION}" ]] || fail "missing ${ABSORPTION}"
+grep -qiE 'not a merge request' "${ABSORPTION}" \
+  || fail "spdd-upstream-absorption.md must say it is not a merge request"
+grep -qiE 'No leftover may ask to upstream' "${ABSORPTION}" \
+  || fail "spdd-upstream-absorption.md must say no leftover may ask to upstream"
+if ! grep -q 'check_absorption_doc_not_merge_request' "${SCRIPT}"; then
+  fail "forbid script must check the absorption doc (mechanical guard)"
+fi
+if ! grep -q 'FORBID_ABSORPTION_DOC' "${SCRIPT}"; then
+  fail "forbid script must honor FORBID_ABSORPTION_DOC so deletion can be proven"
+fi
+if ! grep -q 'Absorption doc is not a merge request' "${WF}"; then
+  fail "workflow must name the absorption step so deletion is visible in review"
+fi
+if ! grep -q 'No leftover may ask to upstream' "${WF}"; then
+  fail "workflow must grep the leftover-upstream sentinel (body mention is not enough)"
+fi
+if grep -q 'continue-on-error' "${WF}"; then
+  fail "forbid job must not continue-on-error (missing absorption doc would stay green)"
+fi
+echo "absorption-doc-not-a-merge-request OK"
+
+echo "== proving: deleting absorption doc keeps the job red =="
+expect_fail "missing absorption doc" \
+  env FORBID_ABSORPTION_DOC=/tmp/does-not-exist-spdd-upstream-absorption.md \
+      FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'FORBIDDEN: missing absorption doc' /tmp/forbid-assert-err.txt; then
+  fail "missing absorption doc must print FORBIDDEN about missing absorption doc"
+fi
+gone_abs_dir="$(mktemp -d)"
+gone_abs="${gone_abs_dir}/spdd-upstream-absorption.md"
+expect_fail "deleted absorption doc" \
+  env FORBID_ABSORPTION_DOC="${gone_abs}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+echo "deleting absorption doc keeps the job red OK"
+
+echo "== proving: leftover-must-not-ask-to-upstream =="
+dropped_mr="$(mktemp)"
+cp "${ABSORPTION}" "${dropped_mr}"
+sed -i 's/not a merge request/not an Embabel contribution queue/g' "${dropped_mr}"
+expect_fail "not-a-merge-request dropped" \
+  env FORBID_ABSORPTION_DOC="${dropped_mr}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'not a merge request' /tmp/forbid-assert-err.txt; then
+  fail "dropping not-a-merge-request must mention the not a merge request requirement"
+fi
+dropped_ask="$(mktemp)"
+cp "${ABSORPTION}" "${dropped_ask}"
+sed -i '/No leftover may ask to upstream/d' "${dropped_ask}"
+expect_fail "leftover-upstream sentinel dropped" \
+  env FORBID_ABSORPTION_DOC="${dropped_ask}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'no leftover may ask to upstream' /tmp/forbid-assert-err.txt; then
+  fail "dropping the leftover-upstream sentinel must mention no leftover may ask to upstream"
+fi
+ask_doc="$(mktemp)"
+cat >"${ask_doc}" <<'EOF'
+# Absorption — please ask to upstream
+
+This document is a merge request.
+Ask to upstream this leftover to embabel/guide.
+Should we upstream Layer B?
+EOF
+expect_fail "absorption leftover asks to upstream" \
+  env FORBID_ABSORPTION_DOC="${ask_doc}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+if ! grep -q 'FORBIDDEN:' /tmp/forbid-assert-err.txt; then
+  fail "leftover that asks to upstream must print FORBIDDEN"
+fi
+mixed_abs="$(mktemp)"
+cat >"${mixed_abs}" <<'EOF'
+This document is not a merge request.
+No leftover may ask to upstream.
+Ask to upstream this leftover anyway.
+EOF
+expect_fail "invitation leftover keeps the job red" \
+  env FORBID_ABSORPTION_DOC="${mixed_abs}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
+echo "leftover-must-not-ask-to-upstream OK"
 
 echo "OK: forbid-embabel-upstream assertions passed"
