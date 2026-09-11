@@ -9,6 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Require GitHub CLI (do not skip)
+        run: |
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "gh missing on runner; installing so the forbid job cannot skip" >&2
+            sudo apt-get update
+            sudo apt-get install -y gh
+          fi
+          if ! command -v gh >/dev/null 2>&1; then
+            echo "FORBIDDEN: gh still missing after install; refuse to skip" >&2
+            exit 1
+          fi
+          gh --version
       - name: Refuse embabel/guide as a push destination
         run: |
           chmod +x scripts/forbid-embabel-upstream.sh scripts/forbid-embabel-upstream-assert.sh

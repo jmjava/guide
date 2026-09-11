@@ -126,8 +126,8 @@ if [[ "${GH_REPO:-}" == "embabel/guide" ]]; then
 fi
 
 # GitHub CLI default repo. Forks often resolve `gh pr create` to the parent.
-# Missing `gh` may skip. A default/nameWithOwner of embabel/guide must fail.
-# --fix does not set or unset this (push-URL disable only).
+# Missing `gh` must fail-closed (do not skip). A default/nameWithOwner of
+# embabel/guide must fail. --fix does not set or unset this (push-URL only).
 check_gh_default_repo() {
   local viewed="" resolved=""
 
@@ -148,7 +148,9 @@ check_gh_default_repo() {
       fi
     fi
   else
-    echo "SKIP: gh not on PATH; cannot verify GitHub CLI default repo (must not be embabel/guide)." >&2
+    echo "FORBIDDEN: gh not on PATH; cannot verify GitHub CLI default repo." >&2
+    echo "Install GitHub CLI. Missing gh must not skip this check." >&2
+    failures=1
     return 0
   fi
 
