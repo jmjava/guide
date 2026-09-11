@@ -300,4 +300,127 @@ expect_fail "alwaysApply only in body" \
   env FORBID_CURSOR_RULE="${body_only}" FORBID_GH_DEFAULT=jmjava/guide "${SCRIPT}"
 echo "dropping alwaysApply keeps the job red OK"
 
+# Leftover #9: hook install must keep the forbid script. CI does not install
+# the hook; a hook-less clone must still fail via the forbid script.
+INSTALL="${ROOT}/scripts/install-git-hooks.sh"
+echo "== proving: install-keeps-forbid-script =="
+[[ -f "${INSTALL}" ]] || fail "missing ${INSTALL}"
+if grep -vE '^[[:space:]]*#' "${INSTALL}" | grep -qE '(>|>>)[^;|&]*forbid-embabel-upstream\.sh'; then
+  fail "install-git-hooks.sh must not redirect onto the forbid script"
+fi
+if ! grep -q 'install-git-hooks must keep the forbid script' "${INSTALL}"; then
+  fail "install-git-hooks.sh must fail-closed when the forbid script is missing"
+fi
+if ! grep -q 'overwrote the forbid script' "${INSTALL}"; then
+  fail "install-git-hooks.sh must refuse to overwrite the forbid script"
+fi
+keep_tree="$(mktemp -d)"
+mkdir -p "${keep_tree}/scripts" "${keep_tree}/.githooks" "${keep_tree}/.cursor/rules"
+git init -q "${keep_tree}"
+git -C "${keep_tree}" remote add origin https://github.com/jmjava/guide.git
+cp "${SCRIPT}" "${keep_tree}/scripts/forbid-embabel-upstream.sh"
+cp "${INSTALL}" "${keep_tree}/scripts/install-git-hooks.sh"
+cp "${ROOT}/.githooks/pre-push" "${keep_tree}/.githooks/pre-push"
+cp "${RULE}" "${keep_tree}/.cursor/rules/no-embabel-upstream.mdc"
+chmod +x "${keep_tree}/scripts/forbid-embabel-upstream.sh" \
+  "${keep_tree}/scripts/install-git-hooks.sh"
+before_sum="$(sha256sum "${keep_tree}/scripts/forbid-embabel-upstream.sh" | awk '{print $1}')"
+expect_ok "install-git-hooks keeps forbid script" \
+  bash "${keep_tree}/scripts/install-git-hooks.sh"
+after_sum="$(sha256sum "${keep_tree}/scripts/forbid-embabel-upstream.sh" | awk '{print $1}')"
+[[ "${before_sum}" == "${after_sum}" ]] \
+  || fail "install-git-hooks.sh overwrote the forbid script"
+grep -q 'forbid-embabel-upstream.sh' "${keep_tree}/.githooks/pre-push" \
+  || fail "installed hook must exec the forbid script"
+echo "install-keeps-forbid-script OK"
+
+echo "== proving: missing forbid script fails install =="
+missing_tree="$(mktemp -d)"
+mkdir -p "${missing_tree}/scripts"
+git init -q "${missing_tree}"
+cp "${INSTALL}" "${missing_tree}/scripts/install-git-hooks.sh"
+chmod +x "${missing_tree}/scripts/install-git-hooks.sh"
+expect_fail "install without forbid script" \
+  bash "${missing_tree}/scripts/install-git-hooks.sh"
+if ! grep -q 'FORBIDDEN: missing' /tmp/forbid-assert-err.txt; then
+  fail "missing forbid script must print FORBIDDEN (do not stub it)"
+fi
+if [[ -f "${missing_tree}/scripts/forbid-embabel-upstream.sh" ]]; then
+  fail "installer must not stub a missing forbid script"
+fi
+echo "missing forbid script fails install OK"
+
+echo "== proving: clone-without-hook-still-fails-in-ci =="
+# Fresh clone: even if .githooks exists in git, core.hooksPath is unset so
+# Git will not run the hook. CI must still fail via the forbid script.
+clone_tree="$(mktemp -d)"
+mkdir -p "${clone_tree}/scripts" "${clone_tree}/.cursor/rules"
+git init -q "${clone_tree}"
+git -C "${clone_tree}" remote add origin https://github.com/jmjava/guide.git
+cp "${SCRIPT}" "${clone_tree}/scripts/forbid-embabel-upstream.sh"
+cp "${RULE}" "${clone_tree}/.cursor/rules/no-embabel-upstream.mdc"
+chmod +x "${clone_tree}/scripts/forbid-embabel-upstream.sh"
+[[ ! -e "${clone_tree}/.githooks" ]] || fail "clone fixture must not have .githooks"
+[[ ! -e "${clone_tree}/.git/hooks/pre-push" ]] || fail "clone fixture must not have installed hook"
+clone_hooks_path="$(git -C "${clone_tree}" config --get core.hooksPath || true)"
+[[ -z "${clone_hooks_path}" ]] || fail "clone fixture must not set core.hooksPath"
+expect_fail "clone without hook --pre-push" \
+  env FORBID_GH_DEFAULT=jmjava/guide \
+      "${clone_tree}/scripts/forbid-embabel-upstream.sh" \
+      --pre-push evil https://github.com/embabel/guide.git
+if ! grep -q 'FORBIDDEN:' /tmp/forbid-assert-err.txt; then
+  fail "hook-less clone must still print FORBIDDEN for embabel/guide.git"
+fi
+if ! grep -q 'Clone without hook must still fail' "${WF}"; then
+  fail "workflow must name the hook-less CI step so deletion is visible"
+fi
+if ! grep -q 'forbid-embabel-upstream-assert.sh' "${WF}"; then
+  fail "workflow must invoke the assert so a hook-less clone still fails in CI"
+fi
+if grep -q 'install-git-hooks.sh' "${WF}"; then
+  fail "forbid job must not depend on install-git-hooks (clone without hook must still fail)"
+fi
+if grep -qE 'git config .+core\.hooksPath \.' "${WF}"; then
+  fail "forbid job must not install core.hooksPath"
+fi
+if grep -q 'continue-on-error' "${WF}"; then
+  fail "forbid job must not continue-on-error (hook-less clone would stay green)"
+fi
+echo "clone-without-hook-still-fails-in-ci OK"
+
+echo "== proving: sabotaged installer overwrite keeps the job red =="
+sab_tree="$(mktemp -d)"
+mkdir -p "${sab_tree}/scripts" "${sab_tree}/.githooks"
+git init -q "${sab_tree}"
+cp "${SCRIPT}" "${sab_tree}/scripts/forbid-embabel-upstream.sh"
+cat >"${sab_tree}/scripts/install-git-hooks.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cat >"${ROOT}/scripts/forbid-embabel-upstream.sh" <<'STUB'
+#!/usr/bin/env bash
+exit 0
+STUB
+chmod +x "${ROOT}/scripts/forbid-embabel-upstream.sh"
+EOF
+chmod +x "${sab_tree}/scripts/install-git-hooks.sh" \
+  "${sab_tree}/scripts/forbid-embabel-upstream.sh"
+sab_before="$(sha256sum "${sab_tree}/scripts/forbid-embabel-upstream.sh" | awk '{print $1}')"
+bash "${sab_tree}/scripts/install-git-hooks.sh"
+sab_after="$(sha256sum "${sab_tree}/scripts/forbid-embabel-upstream.sh" | awk '{print $1}')"
+[[ "${sab_before}" != "${sab_after}" ]] \
+  || fail "sabotage did not overwrite the forbid script; cannot prove the job would go red"
+# The live proving assertion (checksum must stay equal) would now exit 1.
+if [[ "${sab_before}" == "${sab_after}" ]]; then
+  fail "sabotage checksum unexpectedly unchanged"
+fi
+if ! grep -q 'before_sum' "${ROOT}/scripts/forbid-embabel-upstream-assert.sh"; then
+  fail "assert must keep the install-keeps-forbid-script checksum case"
+fi
+if ! grep -q 'clone-without-hook-still-fails-in-ci' \
+     "${ROOT}/scripts/forbid-embabel-upstream-assert.sh"; then
+  fail "assert must keep the hook-less clone CI case"
+fi
+echo "sabotaged installer overwrite keeps the job red OK"
+
 echo "OK: forbid-embabel-upstream assertions passed"
