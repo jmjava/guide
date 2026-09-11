@@ -7,9 +7,8 @@
 #   ./scripts/forbid-embabel-upstream.sh --fix
 #   ./scripts/forbid-embabel-upstream.sh --pre-push <remote-name> <remote-url>
 #
-# --fix disables push on remotes named upstream/embabel whose fetch URL is
-# embabel/guide (fetch stays; push URL becomes DISABLED). It does not change
-# the GitHub CLI default repo.
+# --fix disables Embabel push URLs on every remote (fetch stays; push becomes
+# DISABLED). It does not rewrite fetch URLs or the GitHub CLI default repo.
 # FORBID_GIT_ROOT overrides the repo the git remotes are read from (CI).
 # FORBID_GH_DEFAULT overrides the resolved gh nameWithOwner (tests).
 set -euo pipefail
@@ -58,25 +57,23 @@ check_url() {
   fi
 }
 
-disable_fetch_only_push() {
+# Leftover #3: --fix only disables the Embabel *push* URL. Fetch is left
+# alone so `git fetch upstream` keeps working. Any remote name counts —
+# origin with a jmjava fetch + Embabel pushurl is the typical leftover.
+disable_embabel_push_url() {
   local name="$1"
   local fetch_url push_url
   fetch_url="$(git remote get-url "${name}" 2>/dev/null || true)"
-  [[ -z "${fetch_url}" ]] && return 0
-  [[ "${fetch_url}" =~ ${FORBIDDEN_RE} ]] || return 0
   push_url="$(git remote get-url --push "${name}" 2>/dev/null || true)"
-  if [[ -n "${push_url}" && "${push_url}" =~ ${FORBIDDEN_RE} ]]; then
-    git remote set-url --push "${name}" DISABLED
-    echo "Disabled push URL for remote '${name}' (fetch remains ${fetch_url})" >&2
-  fi
+  [[ -n "${push_url}" && "${push_url}" =~ ${FORBIDDEN_RE} ]] || return 0
+  git remote set-url --push "${name}" DISABLED
+  echo "Disabled push URL for remote '${name}' (fetch remains ${fetch_url})" >&2
 }
 
 if (( FIX )); then
   while read -r name; do
     [[ -z "${name}" ]] && continue
-    if [[ "${name}" == "upstream" || "${name}" == "embabel" ]]; then
-      disable_fetch_only_push "${name}"
-    fi
+    disable_embabel_push_url "${name}"
   done < <(git remote 2>/dev/null || true)
 fi
 
