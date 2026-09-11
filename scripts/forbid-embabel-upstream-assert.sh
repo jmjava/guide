@@ -111,7 +111,7 @@ expect_fail "fake gh nameWithOwner embabel/guide" \
   env PATH="${fake_bin}:${PATH}" "${SCRIPT}"
 echo "fake gh nameWithOwner leftover OK"
 
-# Missing gh: skip with a clear message (do not fail for that reason).
+# Missing gh: fail-closed. The forbid job must not skip this check.
 nogh="$(mktemp -d)"
 ln -s "$(command -v git)" "${nogh}/git"
 ln -s "$(command -v bash)" "${nogh}/bash"
@@ -128,10 +128,14 @@ for dir in ${PATH}; do
   fi
 done
 unset IFS
-expect_ok "missing gh skips" env PATH="${nogh}:${filtered_path}" FORBID_GH_DEFAULT= "${SCRIPT}"
-if ! grep -q 'SKIP: gh not on PATH' /tmp/forbid-assert-err.txt; then
-  fail "missing gh should print a SKIP message about gh not on PATH"
+expect_fail "missing gh fail-closed" \
+  env PATH="${nogh}:${filtered_path}" FORBID_GH_DEFAULT= "${SCRIPT}"
+if ! grep -q 'FORBIDDEN: gh not on PATH' /tmp/forbid-assert-err.txt; then
+  fail "missing gh should fail-closed with FORBIDDEN about gh not on PATH"
 fi
-echo "missing gh skip OK"
+if grep -q 'SKIP: gh not on PATH' /tmp/forbid-assert-err.txt; then
+  fail "missing gh must not skip the forbid check"
+fi
+echo "missing gh fail-closed OK"
 
 echo "OK: forbid-embabel-upstream assertions passed"
