@@ -50,7 +50,9 @@ check_url() {
   local label="$1"
   local url="$2"
   [[ -z "${url}" ]] && return 0
-  if [[ "${url}" =~ ${FORBIDDEN_RE} ]]; then
+  # Leftover #4: match github.com URLs and the short form embabel/guide.git
+  # that a sabotaged hook or gh default can pass as the push destination.
+  if is_embabel_guide_repo "${url}"; then
     echo "FORBIDDEN: ${label} points at embabel/guide: ${url}" >&2
     echo "jmjava/guide is fork-only. Fetch upstream read-only; never push/PR there." >&2
     failures=1
@@ -106,10 +108,18 @@ while read -r name; do
 done < <(git remote 2>/dev/null || true)
 
 # pre-push hook args: $1 = remote name, $2 = remote URL
+# Leftover #4: --pre-push to embabel/guide.git must fail. An empty
+# destination is fail-closed so a sabotaged hook cannot skip the URL check.
 if [[ "${1:-}" == "--pre-push" ]]; then
   remote_name="${2:-}"
   remote_url="${3:-}"
-  check_url "pre-push remote ${remote_name}" "${remote_url}"
+  if [[ -z "${remote_url}" ]]; then
+    echo "FORBIDDEN: --pre-push missing destination URL (remote ${remote_name:-?})." >&2
+    echo "Refuse to skip; a push to embabel/guide.git must stay red." >&2
+    failures=1
+  else
+    check_url "pre-push remote ${remote_name}" "${remote_url}"
+  fi
 fi
 
 # CI / manual: also scan for accidental gh target hints in env
