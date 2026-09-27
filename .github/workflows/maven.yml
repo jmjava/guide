@@ -30,6 +30,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # GDE-01: keep the Surefire reporter gate fail-closed. Sabotaging
+      # fail-on-error or the XML scan must make this step fail.
+      - name: Prove Surefire reporter gate
+        run: |
+          chmod +x scripts/surefire-reporter-assert.sh
+          ./scripts/surefire-reporter-assert.sh
+
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v4
         with:
@@ -59,6 +66,12 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_DUMMY_KEY }}
         run: mvn -U -B test
 
+      # Every matrix leg: a Surefire XML file that records failures or
+      # errors fails the job. The dorny step below only publishes on main.
+      - name: Fail closed on Surefire report failures
+        if: always()
+        run: ./scripts/surefire-reporter-assert.sh --check-reports target/surefire-reports
+
       # Generate JaCoCo coverage report
       - name: Generate Coverage Report
         if: always()
@@ -74,7 +87,7 @@ jobs:
           name: Test Results
           path: target/surefire-reports/*.xml
           reporter: java-junit
-          fail-on-error: false
+          fail-on-error: true
 
       # Upload test reports as artifacts
       - name: Upload Test Reports
