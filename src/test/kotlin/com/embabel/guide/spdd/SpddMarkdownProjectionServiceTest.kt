@@ -157,6 +157,25 @@ class SpddMarkdownProjectionServiceTest {
     assertThrows<IllegalArgumentException> { service.load() }
   }
 
+  @Test
+  fun `load refuses when projection is disabled before scanning any root`() {
+    val root = copyFixtureTo(tempDir.resolve("project"))
+    val repo = inMemoryRepository()
+    val service = SpddMarkdownProjectionService(
+      guideProperties(root.toString()).copy(
+        spddProjection = GuideProperties.SpddProjection(
+          enabled = false,
+          defaultRootPath = root.toString(),
+        ),
+      ),
+      repo,
+    )
+
+    val e = assertThrows<IllegalStateException> { service.load(root.toString()) }
+    assertTrue(e.message!!.contains("guide.spdd-projection.enabled is false"))
+    assertEquals(0, repo.findByLabel("WorkId").size)
+  }
+
   // --------------------------------------------------------------- retrieve
 
   @Test
