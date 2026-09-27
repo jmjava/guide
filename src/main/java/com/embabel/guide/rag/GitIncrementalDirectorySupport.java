@@ -96,6 +96,9 @@ public final class GitIncrementalDirectorySupport {
     /**
      * Paths relative to repo root that were added, copied, modified, renamed, or type-changed between the two refs.
      * Excludes pure deletes (RAG chunks for removed files are left until a full re-ingest).
+     * A successful diff with no such paths is an empty list. If git cannot produce that diff, throws
+     * {@link IllegalStateException} so incremental ingest does not treat the failure as "nothing changed"
+     * and advance the stored HEAD.
      */
     public static List<String> changedPathsBetween(Path repoDir, String fromRef, String toRef) {
         if (fromRef == null || fromRef.isBlank() || toRef == null || toRef.isBlank()) {
@@ -105,7 +108,9 @@ public final class GitIncrementalDirectorySupport {
                 List.of("diff", "--name-only", "--diff-filter=ACMRTUXB", fromRef, toRef),
                 Duration.ofMinutes(2));
         if (out.isEmpty()) {
-            return List.of();
+            throw new IllegalStateException(
+                    "refusing incremental ingest: git diff failed between " + fromRef.trim()
+                            + " and " + toRef.trim() + " in " + repoDir.toAbsolutePath());
         }
         List<String> paths = new ArrayList<>();
         for (String line : out.get().split("\n")) {

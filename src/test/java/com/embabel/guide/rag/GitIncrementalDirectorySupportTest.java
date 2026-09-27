@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class GitIncrementalDirectorySupportTest {
 
@@ -73,6 +74,16 @@ class GitIncrementalDirectorySupportTest {
                 .containsExactly("spdd/canvas/FEAT-001.md", "spdd/canvas/extra/nested.md");
         assertThat(GitIncrementalDirectorySupport.filterPathsUnderDirectory(root, root, changed))
                 .containsExactlyElementsOf(changed);
+    }
+
+    @Test
+    void changedPathsBetweenRefusesWhenGitDiffFails() {
+        assertThatThrownBy(() ->
+                GitIncrementalDirectorySupport.changedPathsBetween(repo, "abc123", "def456"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("refusing incremental ingest")
+                .hasMessageContaining("abc123")
+                .hasMessageContaining("def456");
     }
 
     private static boolean gitAvailable() throws Exception {
