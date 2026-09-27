@@ -1,0 +1,76 @@
+# Maintainability ratchets. Codecov stays on the Build workflow and is non-blocking.
+# This workflow does not rewrite config/detekt/baseline.xml.
+name: Maintainability ratchets
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  detekt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin/main
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+
+      - name: Clean as You Code detekt
+        run: |
+          chmod +x scripts/detekt-ratchet.sh
+          ./scripts/detekt-ratchet.sh cayc
+
+      - name: Detekt baseline must fail new findings and stay unchanged
+        run: |
+          ./scripts/detekt-ratchet.sh baseline
+          git diff --exit-code -- config/detekt/baseline.xml
+
+  hotspot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch origin/main
+        run: git fetch origin main:refs/remotes/origin/main
+
+      - name: Hotspot gate
+        run: python3 scripts/hotspot-gate.py
+
+  fitness-and-pit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: maven
+
+      - name: Configure Maven Settings
+        uses: s4u/maven-settings-action@v2.8.0
+        with:
+          servers: ${{ secrets.EMBABEL_ARTIFACTORY }}
+
+      - name: ArchUnit fitness function
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_DUMMY_KEY }}
+        run: ./mvnw -B -Dtest=NoEmbabelGuideUpstreamTargetArchTest test
+
+      - name: PIT on ingestion result types
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_DUMMY_KEY }}
+        run: ./mvnw -B -Ppit test-compile pitest:mutationCoverage
