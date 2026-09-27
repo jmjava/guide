@@ -42,6 +42,30 @@ class GitIncrementalDirectorySupportTest {
     }
 
     @Test
+    void unchangedHeadOnDirtyWorkTreeIsNotAnEmptyChangeSet() throws Exception {
+        Assumptions.assumeTrue(gitAvailable(), "git must be on PATH");
+
+        run(repo, "git", "init");
+        run(repo, "git", "config", "user.email", "test@test.local");
+        run(repo, "git", "config", "user.name", "Test");
+        Files.writeString(repo.resolve("a.txt"), "v1", StandardCharsets.UTF_8);
+        run(repo, "git", "add", "a.txt");
+        run(repo, "git", "commit", "-m", "first");
+        String head = GitIncrementalDirectorySupport.headCommit(repo).orElseThrow();
+
+        assertThat(GitIncrementalDirectorySupport.changedPathsBetween(repo, head, head)).isEmpty();
+
+        Files.writeString(repo.resolve("a.txt"), "dirty", StandardCharsets.UTF_8);
+        Files.writeString(repo.resolve("staged.txt"), "staged", StandardCharsets.UTF_8);
+        run(repo, "git", "add", "staged.txt");
+        Files.writeString(repo.resolve("new.txt"), "untracked", StandardCharsets.UTF_8);
+
+        assertThat(GitIncrementalDirectorySupport.headCommit(repo)).contains(head);
+        assertThat(GitIncrementalDirectorySupport.changedPathsBetween(repo, head, head))
+                .containsExactlyInAnyOrder("a.txt", "staged.txt", "new.txt");
+    }
+
+    @Test
     void findGitWorkTreeRootWalksUpFromSubdirectory() throws Exception {
         Assumptions.assumeTrue(gitAvailable(), "git must be on PATH");
 
