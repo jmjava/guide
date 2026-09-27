@@ -114,6 +114,16 @@ class SpddMarkdownProjectionServiceTest {
   }
 
   @Test
+  fun `load rejects override that only shares a name prefix with an allowed root`() {
+    val root = copyFixtureTo(tempDir.resolve("project"))
+    val sibling = Files.createDirectory(tempDir.resolve("project-extra"))
+    val service = service(inMemoryRepository(), root.toString())
+
+    val e = assertThrows<IllegalArgumentException> { service.load(sibling.toString()) }
+    assertTrue(e.message!!.contains("not under an allowed root"))
+  }
+
+  @Test
   fun `load accepts override under an explicitly allowed root`() {
     val defaultRoot = copyFixtureTo(tempDir.resolve("default"))
     val allowedParent = tempDir.resolve("allowed")
