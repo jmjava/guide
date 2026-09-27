@@ -75,6 +75,23 @@ class GitIncrementalDirectorySupportTest {
                 .containsExactlyElementsOf(changed);
     }
 
+    @Test
+    void filterPathsUnderDirectoryDropsEntriesThatLeaveTheConfiguredDirectory() {
+        Path root = Path.of("/repo").toAbsolutePath().normalize();
+        Path canvas = root.resolve("spdd/canvas");
+        List<String> changed = List.of(
+                "spdd/canvas/FEAT-001.md",
+                "spdd/canvas/nested/../FEAT-002.md",
+                "spdd/canvas/../analysis/notes.md",
+                "spdd/canvas/../../outside.txt"
+        );
+        assertThat(GitIncrementalDirectorySupport.filterPathsUnderDirectory(root, canvas, changed))
+                .containsExactly(
+                        "spdd/canvas/FEAT-001.md",
+                        "spdd/canvas/nested/../FEAT-002.md"
+                );
+    }
+
     private static boolean gitAvailable() throws Exception {
         Process p = new ProcessBuilder("git", "--version").start();
         return p.waitFor(5, TimeUnit.SECONDS) && p.exitValue() == 0;

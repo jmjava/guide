@@ -55,6 +55,8 @@ public final class GitIncrementalDirectorySupport {
     /**
      * Keeps repo-relative paths that lie under {@code configuredDir} (itself under {@code gitRoot}).
      * When {@code configuredDir} is the repo root, all paths are returned.
+     * A lexical prefix match is not enough: {@code ..} segments that normalize outside
+     * {@code configuredDir} are dropped so incremental ingest cannot leave that directory.
      */
     public static List<String> filterPathsUnderDirectory(
             Path gitRoot,
@@ -80,11 +82,20 @@ public final class GitIncrementalDirectorySupport {
                 continue;
             }
             String n = p.replace('\\', '/');
-            if (n.equals(prefix) || n.startsWith(prefixSlash)) {
+            if ((n.equals(prefix) || n.startsWith(prefixSlash)) && staysUnderConfiguredDirectory(root, dir, n)) {
                 out.add(n);
             }
         }
         return out;
+    }
+
+    /**
+     * Prefix matching treats {@code spdd/canvas/../secrets.md} as inside {@code spdd/canvas}.
+     * After normalization that file is not, and incremental ingest must not read it.
+     */
+    private static boolean staysUnderConfiguredDirectory(Path root, Path dir, String repoRelativePath) {
+        Path resolved = root.resolve(repoRelativePath).normalize();
+        return resolved.startsWith(dir);
     }
 
     public static Optional<String> headCommit(Path repoDir) {
