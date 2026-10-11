@@ -25,5 +25,7 @@ done
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-mvn -B -U -DskipTests test-compile org.pitest:pitest-maven:mutationCoverage
+# test-compile stops before the test phase. PIT skips the module
+# when Maven is told to skip the test run, and still exits 0.
+mvn -B -U test-compile org.pitest:pitest-maven:mutationCoverage
 python3 "${ROOT}/scripts/pit_mutation.py"

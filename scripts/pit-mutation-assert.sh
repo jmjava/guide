@@ -28,6 +28,9 @@ fi
 if ! grep -q 'org.pitest:pitest-maven:mutationCoverage' "${WORKFLOW}" "${SCRIPT}"; then
   fail "workflow must run PIT mutationCoverage"
 fi
+if grep -q 'skipTests' "${SCRIPT}" "${WORKFLOW}"; then
+  fail "PIT must not be skipped with skipTests"
+fi
 if ! grep -q 'pit-mutation-assert.sh' "${WORKFLOW}"; then
   fail "workflow must invoke this assert"
 fi
