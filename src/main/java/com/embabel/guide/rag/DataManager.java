@@ -212,8 +212,10 @@ public class DataManager {
 
     /**
      * When {@code guide.git-ingestion.enabled} is true and the path is inside a git work tree: skip if HEAD matches
-     * the last stored commit; otherwise ingest only files changed since that commit under this directory
-     * (or full tree of the configured directory if none stored).
+     * the last stored commit and the work tree is clean under this directory. If HEAD matches but files are
+     * uncommitted, ingest those dirty paths instead of treating the directory as unchanged. Otherwise ingest only
+     * files changed since that commit under this directory (or the full tree of the configured directory if none
+     * stored).
      * Configured paths may be repo subdirs (e.g. {@code spdd/canvas}); the git root is discovered by walking parents.
      * Revisions are written to {@code guide.git-ingestion.state-file} when ingestion succeeds without new failures.
      *
@@ -239,7 +241,21 @@ public class DataManager {
         String head = headOpt.get();
         String previous = revStore.getRevision(absolutePath).orElse("");
         if (head.equals(previous)) {
-            logger.info("Skipping directory {} (unchanged git HEAD {})", absolutePath, head);
+            List<String> dirtyInRepo = GitIncrementalDirectorySupport.changedPathsBetween(gitRoot, head, head);
+            List<String> dirty = GitIncrementalDirectorySupport.filterPathsUnderDirectory(
+                    gitRoot, configured, dirtyInRepo);
+            if (dirty.isEmpty()) {
+                logger.info("Skipping directory {} (unchanged git HEAD {}, clean work tree)", absolutePath, head);
+                return true;
+            }
+            logger.info("HEAD {} unchanged but {} uncommitted path(s) under {}; ingesting dirty work tree",
+                    head, dirty.size(), absolutePath);
+            int failuresBeforeDirty = failedDocuments.size();
+            ingestChangedGitFiles(gitRoot.toString(), dirty, failedDocuments);
+            if (failedDocuments.size() != failuresBeforeDirty) {
+                logger.warn("Dirty work tree under {} was not fully ingested ({} new failure(s))",
+                        absolutePath, failedDocuments.size() - failuresBeforeDirty);
+            }
             return true;
         }
         int failuresBefore = failedDocuments.size();
